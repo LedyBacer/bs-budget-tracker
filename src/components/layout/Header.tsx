@@ -5,7 +5,12 @@ export function Header() {
   const launchParams = useLaunchParams();
   // Типизируем пользователя, если он есть
   // @ts-expect-error
-  const user = launchParams.initData?.user as WebAppUser | undefined;
+  const user =
+    launchParams.tgWebAppData &&
+    typeof launchParams.tgWebAppData === 'object' &&
+    'user' in launchParams.tgWebAppData
+      ? (launchParams.tgWebAppData.user as WebAppUser | undefined)
+      : undefined;
 
   return (
     <header className="bg-background sticky top-0 z-10 border-b p-4">

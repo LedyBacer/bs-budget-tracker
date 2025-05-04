@@ -1,12 +1,13 @@
 // src/App.tsx
 import { useEffect } from 'react';
 import {
+  useLaunchParams,
   useSignal,
   miniApp,
   backButton,
   mainButton,
-  // popup, // Пока не используем
 } from '@telegram-apps/sdk-react';
+import { WebAppUser } from '@/types';
 import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Header } from '@/components/layout/Header';
@@ -19,12 +20,14 @@ import { CategoryList } from '@/components/features/category/CategoryList';
 import { TransactionList } from '@/components/features/transaction/TransactionList'; // Импортируем список транзакций
 
 function AppContent() {
-  // --- Логика SDK остается прежней (кроме popup) ---
-  const isBackButtonVisible = useSignal(backButton.isVisible);
-  const mainButtonText = useSignal(mainButton.text);
-  const mainButtonLoading = useSignal(mainButton.isLoaderVisible);
-  const mainButtonVisible = useSignal(mainButton.isVisible);
   const { currentBudget, isLoadingBudgets, errorLoadingBudgets } = useBudgets();
+  const launchParams = useLaunchParams();
+  const currentUser =
+    launchParams.tgWebAppData &&
+    typeof launchParams.tgWebAppData === 'object' &&
+    'user' in launchParams.tgWebAppData
+      ? (launchParams.tgWebAppData.user as WebAppUser | undefined)
+      : undefined;
 
   useEffect(() => {
     miniApp.ready();
@@ -78,14 +81,64 @@ function AppContent() {
           )
         )}
 
-        {/* Просто для отладки статуса SDK */}
-        <div className="bg-card text-card-foreground mt-6 rounded-lg border p-4 text-sm">
-          <h3 className="text-md mb-2 font-semibold">SDK Status:</h3>
-          <p>Back Button Visible: {isBackButtonVisible ? '✅ Yes' : '❌ No'}</p>
-          <p>Main Button Visible: {mainButtonVisible ? '✅ Yes' : '❌ No'}</p>
-          <p>Main Button Text: "{mainButtonText}"</p>
-          <p>Main Button Loading: {mainButtonLoading ? '⏳ Yes' : '✅ No'}</p>
+        {/* --- Отладочный блок SDK --- */}
+        <div className="mt-auto pt-6">
+          {' '}
+          {/* Добавим отступ сверху */}
+          <details className="bg-card text-card-foreground rounded-lg border p-4 text-sm">
+            <summary className="mb-2 cursor-pointer font-semibold">SDK Status & Debug Info</summary>
+
+            <div className="mt-2 space-y-1">
+              <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">Buttons:</h4>
+              <p>Back Button Visible: {useSignal(backButton.isVisible) ? '✅ Yes' : '❌ No'}</p>
+              <p>Main Button Visible: {useSignal(mainButton.isVisible) ? '✅ Yes' : '❌ No'}</p>
+              <p>Main Button Text: "{useSignal(mainButton.text)}"</p>
+              <p>
+                Main Button Loading: {useSignal(mainButton.isLoaderVisible) ? '⏳ Yes' : '✅ No'}
+              </p>
+            </div>
+
+            <div className="mt-3 space-y-1">
+              <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">
+                User Data (from tgWebAppData):
+              </h4>
+              {/* Проверяем исправленный currentUser */}
+              {currentUser ? (
+                <>
+                  <p>
+                    Status: <span className="font-medium text-green-600">✅ Loaded</span>
+                  </p>
+                  {/* Используем поля как есть, т.к. они уже в camelCase в v3 */}
+                  <p>
+                    ID: <span className="font-mono text-xs">{currentUser.id}</span>
+                  </p>
+                  <p>First Name: {currentUser.first_name}</p>
+                  {currentUser.last_name && <p>Last Name: {currentUser.last_name}</p>}
+                  {currentUser.username && <p>Username: @{currentUser.username}</p>}
+                  <p>Is Premium: {currentUser.is_premium ? 'Yes' : 'No'}</p>
+                  <p>Language: {currentUser.language_code || 'N/A'}</p>
+                </>
+              ) : (
+                <p>
+                  Status:{' '}
+                  <span className="font-medium text-red-600">❌ Not Loaded (Check code!)</span>
+                </p>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <details className="text-xs">
+                <summary className="text-muted-foreground cursor-pointer">
+                  Raw Launch Params
+                </summary>
+                <pre className="bg-muted mt-1 max-h-40 overflow-auto rounded p-1 text-[10px] leading-tight">
+                  {JSON.stringify(launchParams, null, 2)}
+                </pre>
+              </details>
+            </div>
+          </details>
         </div>
+        {/* --- Конец отладочного блока --- */}
       </PageWrapper>
       <Footer />
     </div>
