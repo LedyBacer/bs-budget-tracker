@@ -12,7 +12,7 @@ const mockUser: Pick<WebAppUser, 'id' | 'first_name' | 'last_name' | 'username'>
   username: 'demouser',
 };
 
-const budgets: Budget[] = [
+let budgets: Budget[] = [
   {
     id: 'b1',
     name: 'Январь 2024',
@@ -125,6 +125,50 @@ export const addBudget = async (name: string, totalAmount: number): Promise<Budg
   };
   budgets.push(newBudget);
   return { ...newBudget }; // Возвращаем копию
+};
+
+export const updateBudget = async (
+  budgetId: string,
+  name: string,
+  totalAmount: number
+): Promise<Budget> => {
+  await fakeNetworkDelay();
+  console.log('Mock API: updateBudget called for', budgetId, 'with', { name, totalAmount });
+  const budgetIndex = budgets.findIndex((b) => b.id === budgetId);
+  if (budgetIndex === -1) {
+    throw new Error('Budget not found');
+  }
+  if (!name || totalAmount <= 0) {
+    throw new Error('Invalid budget data');
+  }
+  // TODO: Подумать о логике изменения totalAmount, если он стал меньше суммы лимитов категорий?
+  // Для MVP просто обновляем.
+
+  budgets[budgetIndex] = { ...budgets[budgetIndex], name, totalAmount };
+  console.warn('Update budget in mockData is basic.');
+  return { ...budgets[budgetIndex] };
+};
+
+export const deleteBudget = async (budgetId: string): Promise<boolean> => {
+  await fakeNetworkDelay();
+  console.log('Mock API: deleteBudget called for', budgetId);
+  const initialLength = budgets.length;
+  // Удаляем бюджет
+  budgets = budgets.filter((b) => b.id !== budgetId);
+  // Удаляем связанные категории
+  const initialCategoriesLength = categories.length;
+  categories = categories.filter((c) => c.budgetId !== budgetId);
+  console.log(
+    `Deleted ${initialCategoriesLength - categories.length} categories for budget ${budgetId}`
+  );
+  // Удаляем связанные транзакции
+  const initialTransactionsLength = transactions.length;
+  transactions = transactions.filter((t) => t.budgetId !== budgetId);
+  console.log(
+    `Deleted ${initialTransactionsLength - transactions.length} transactions for budget ${budgetId}`
+  );
+
+  return budgets.length < initialLength;
 };
 
 // == Категории ==

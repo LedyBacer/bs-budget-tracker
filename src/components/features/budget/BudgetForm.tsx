@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { useBudgets } from '@/contexts/BudgetContext'; // Импортируем контекст для вызова addBudget
 import { popup } from '@telegram-apps/sdk-react'; // Для уведомлений об ошибках
+import { Budget } from '@/types'; // Импорт типа
+import * as mockApi from '@/lib/mockData'; // Импорт API
 
 // Схема валидации Zod для бюджета
 const budgetSchema = z.object({
@@ -35,14 +37,19 @@ const budgetSchema = z.object({
 type BudgetFormData = z.infer<typeof budgetSchema>;
 
 interface BudgetFormProps {
-  // budgetToEdit?: Budget | null; // Пока не делаем редактирование
+  budgetToEdit?: Budget | null; // Принимаем бюджет для редактирования
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onBudgetSaved: () => void; // Общий колбэк на сохранение (для обновления)
+  onBudgetSaved: () => void;
 }
 
-export function BudgetForm({ open, onOpenChange, onBudgetSaved }: BudgetFormProps) {
-  const { addBudget: addBudgetFromContext } = useBudgets(); // Получаем функцию добавления из контекста
+export function BudgetForm({
+  budgetToEdit, // Используем пропс
+  open,
+  onOpenChange,
+  onBudgetSaved,
+}: BudgetFormProps) {
+  const { addBudget: addBudgetFromContext, updateBudget: updateBudgetFromContext } = useBudgets();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -53,22 +60,23 @@ export function BudgetForm({ open, onOpenChange, onBudgetSaved }: BudgetFormProp
     formState: { errors },
   } = useForm<BudgetFormData>({
     resolver: zodResolver(budgetSchema),
-    defaultValues: {
-      // Значения по умолчанию для новой записи
-      name: '',
-      totalAmount: undefined,
-    },
+    // defaultValues теперь зависят от режима (редактирование или добавление)
+    // Мы будем устанавливать их в useEffect ниже
   });
 
-  // Сброс формы при открытии/закрытии
+  // Сброс и установка значений при открытии/смене режима
   useEffect(() => {
     if (open) {
-      reset({ name: '', totalAmount: undefined }); // Всегда сбрасываем для новой записи
+      reset({
+        // Устанавливаем значения в зависимости от budgetToEdit
+        name: budgetToEdit?.name || '',
+        totalAmount: budgetToEdit?.totalAmount || undefined,
+      });
       setSubmitError(null);
     } else {
       reset(); // Сбрасываем при закрытии
     }
-  }, [open, reset]);
+  }, [open, budgetToEdit, reset]);
 
   const onSubmit: SubmitHandler<BudgetFormData> = async (data) => {
     setIsSubmitting(true);
@@ -76,16 +84,26 @@ export function BudgetForm({ open, onOpenChange, onBudgetSaved }: BudgetFormProp
     console.log('Submitting budget form:', data);
 
     try {
-      // Вызываем функцию добавления из контекста
-      const newBudget = await addBudgetFromContext(data.name, data.totalAmount);
-      if (newBudget) {
-        onBudgetSaved(); // Вызываем колбэк (хотя контекст сам обновит список)
-        onOpenChange(false); // Закрываем диалог
+      if (budgetToEdit) {
+        // Вызываем update из контекста
+        const updated = await updateBudgetFromContext(budgetToEdit.id, data.name, data.totalAmount);
+        if (!updated) {
+          throw new Error('Не удалось обновить бюджет через контекст.');
+        }
       } else {
-        // Если addBudgetFromContext вернул null (обработал ошибку внутри)
-        setSubmitError('Не удалось добавить бюджет. Попробуйте снова.');
-        popup.open.ifAvailable({ title: 'Ошибка', message: 'Не удалось добавить бюджет.' });
+        // Вызываем функцию добавления из контекста
+        const newBudget = await addBudgetFromContext(data.name, data.totalAmount);
+        if (newBudget) {
+          onBudgetSaved(); // Вызываем колбэк (хотя контекст сам обновит список)
+          onOpenChange(false); // Закрываем диалог
+        } else {
+          // Если addBudgetFromContext вернул null (обработал ошибку внутри)
+          setSubmitError('Не удалось добавить бюджет. Попробуйте снова.');
+          popup.open.ifAvailable({ title: 'Ошибка', message: 'Не удалось добавить бюджет.' });
+        }
       }
+      onBudgetSaved();
+      onOpenChange(false);
     } catch (error) {
       // На случай если addBudgetFromContext пробросит ошибку
       console.error('Failed to save budget:', error);
@@ -103,7 +121,7 @@ export function BudgetForm({ open, onOpenChange, onBudgetSaved }: BudgetFormProp
         <DialogHeader>
           <DialogTitle>
             Новый бюджет
-            {/* {budgetToEdit ? 'Редактировать бюджет' : 'Новый бюджет'} */}
+            {budgetToEdit ? 'Редактировать бюджет' : 'Новый бюджет'}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -158,7 +176,13 @@ export function BudgetForm({ open, onOpenChange, onBudgetSaved }: BudgetFormProp
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Создание...' : 'Создать бюджет'}
+              {isSubmitting
+                ? budgetToEdit
+                  ? 'Сохранение...'
+                  : 'Создание...'
+                : budgetToEdit
+                  ? 'Сохранить изменения'
+                  : 'Создать бюджет'}
             </Button>
           </DialogFooter>
         </form>

@@ -1,3 +1,4 @@
+// src/contexts/BudgetContext.tsx
 import React, {
   createContext,
   useState,
@@ -7,7 +8,8 @@ import React, {
   ReactNode,
 } from 'react';
 import { Budget } from '@/types';
-import * as mockApi from '@/lib/mockData'; // Импортируем наши моковые функции
+import * as mockApi from '@/lib/mockData';
+import { popup } from '@telegram-apps/sdk-react'; // Для ошибок
 
 interface BudgetContextType {
   allBudgets: Budget[];
@@ -17,6 +19,9 @@ interface BudgetContextType {
   selectBudget: (budgetId: string | null) => void;
   reloadBudgets: () => Promise<void>;
   addBudget: (name: string, totalAmount: number) => Promise<Budget | null>;
+  // Добавляем новые методы
+  updateBudget: (id: string, name: string, totalAmount: number) => Promise<Budget | null>;
+  deleteBudget: (id: string) => Promise<boolean>;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -75,10 +80,56 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       console.log('BudgetContext: Budget added successfully, new budget ID:', newBudget.id);
       return newBudget;
     } catch (error) {
-      console.error('BudgetContext: Failed to add budget via mockApi:', error);
-      // Ошибку можно обработать здесь или пробросить дальше
-      // Для пользователя лучше обработать в форме через popup
-      return null; // Возвращаем null при ошибке
+      console.error('BudgetContext: Failed to add budget:', error);
+      popup.open.ifAvailable({
+        title: 'Ошибка добавления',
+        message: error instanceof Error ? error.message : 'Неизвестная ошибка',
+      });
+      return null;
+    }
+  };
+
+  // --- Новая функция updateBudget ---
+  const updateBudget = async (
+    id: string,
+    name: string,
+    totalAmount: number
+  ): Promise<Budget | null> => {
+    try {
+      console.log('BudgetContext: Calling mockApi.updateBudget for', id);
+      const updatedBudget = await mockApi.updateBudget(id, name, totalAmount);
+      await reloadBudgets(); // Перезагружаем список
+      // Если обновили текущий бюджет, он останется выбранным после reload
+      console.log('BudgetContext: Budget updated successfully:', updatedBudget.id);
+      return updatedBudget;
+    } catch (error) {
+      console.error('BudgetContext: Failed to update budget:', error);
+      popup.open.ifAvailable({
+        title: 'Ошибка обновления',
+        message: error instanceof Error ? error.message : 'Неизвестная ошибка',
+      });
+      return null;
+    }
+  };
+
+  // --- Новая функция deleteBudget ---
+  const deleteBudget = async (id: string): Promise<boolean> => {
+    try {
+      console.log('BudgetContext: Calling mockApi.deleteBudget for', id);
+      const success = await mockApi.deleteBudget(id);
+      if (success) {
+        await reloadBudgets(); // Перезагружаем список
+        // selectBudget(null) будет вызван в reloadBudgets, если удалили текущий
+        console.log('BudgetContext: Budget deleted successfully:', id);
+      }
+      return success;
+    } catch (error) {
+      console.error('BudgetContext: Failed to delete budget:', error);
+      popup.open.ifAvailable({
+        title: 'Ошибка удаления',
+        message: error instanceof Error ? error.message : 'Неизвестная ошибка',
+      });
+      return false;
     }
   };
 
@@ -90,6 +141,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     selectBudget,
     reloadBudgets,
     addBudget,
+    updateBudget, // Добавляем в контекст
+    deleteBudget, // Добавляем в контекст
   };
 
   return <BudgetContext.Provider value={value}>{children}</BudgetContext.Provider>;
