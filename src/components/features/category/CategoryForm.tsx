@@ -99,11 +99,10 @@ export function CategoryForm({
 
     try {
       if (categoryToEdit) {
-        // Логика обновления (пока не реализована в mockApi)
-        console.warn('Update category not implemented yet in mockApi');
-        // await mockApi.updateCategory(categoryToEdit.id, data.name, data.limit);
-        alert('Обновление категории пока не реализовано'); // Заглушка
+        // Обновляем категорию
+        await mockApi.updateCategory(categoryToEdit.id, data.name, data.limit);
       } else {
+        // Добавляем новую
         await mockApi.addCategory(budgetId, data.name, data.limit);
       }
       onCategorySaved(); // Вызываем колбэк для обновления списка

@@ -26,7 +26,7 @@ const budgets: Budget[] = [
   },
 ];
 
-const categories: Category[] = [
+let categories: Category[] = [
   { id: 'c1', budgetId: 'b1', name: 'Еда', limit: 40000 },
   { id: 'c2', budgetId: 'b1', name: 'Транспорт', limit: 10000 },
   { id: 'c3', budgetId: 'b1', name: 'Развлечения', limit: 15000 },
@@ -155,7 +155,41 @@ export const addCategory = async (
   return { ...newCategory };
 };
 
-// TODO: Добавить updateCategory, deleteCategory
+export const updateCategory = async (
+  categoryId: string,
+  name: string,
+  limit: number
+): Promise<Category> => {
+  await fakeNetworkDelay();
+  console.log('Mock API: updateCategory called for', categoryId, 'with', { name, limit });
+  const categoryIndex = categories.findIndex((c) => c.id === categoryId);
+  if (categoryIndex === -1) {
+    throw new Error('Category not found');
+  }
+  if (!name || limit <= 0) {
+    throw new Error('Invalid category data');
+  }
+  // TODO: Проверка лимитов бюджета при обновлении
+
+  categories[categoryIndex] = { ...categories[categoryIndex], name, limit };
+  console.warn('Update category in mockData is basic, might need budget limit checks.');
+  return { ...categories[categoryIndex] };
+};
+
+export const deleteCategory = async (categoryId: string): Promise<boolean> => {
+  await fakeNetworkDelay();
+  console.log('Mock API: deleteCategory called for', categoryId);
+  // Проверка на наличие транзакций (опционально для MVP)
+  const hasTransactions = transactions.some((t) => t.categoryId === categoryId);
+  if (hasTransactions) {
+    console.warn('Mock API: Category has transactions, deletion prevented.');
+    throw new Error('Нельзя удалить категорию, по ней есть транзакции.');
+  }
+
+  const initialLength = categories.length;
+  categories = categories.filter((c) => c.id !== categoryId);
+  return categories.length < initialLength;
+};
 
 // == Транзакции ==
 export const getTransactionsByBudgetId = async (budgetId: string): Promise<Transaction[]> => {
