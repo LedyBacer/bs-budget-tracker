@@ -1,12 +1,13 @@
 // src/components/features/transaction/TransactionList.tsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
 import { Transaction, Category } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { ArrowDownCircle, ArrowUpCircle, Edit } from 'lucide-react'; // Иконки для типов и редактирования
+import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle } from 'lucide-react'; // Иконки для типов и редактирования
 import { Button } from '@/components/ui/button';
+import { TransactionForm } from './TransactionForm';
 
 // Опционально: Интерфейс для транзакции с присоединенным именем категории
 interface TransactionWithCategoryName extends Transaction {
@@ -16,28 +17,55 @@ interface TransactionWithCategoryName extends Transaction {
 export function TransactionList() {
   const { currentBudget } = useBudgets();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]); // Нужны для имен категорий
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false); // Состояние диалога формы
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null); // Для редактирования
   // TODO: Обработка ошибок
 
-  useEffect(() => {
-    if (currentBudget) {
-      setIsLoading(true);
-      Promise.all([
+  // useCallback для загрузки данных
+  const loadData = useCallback(async () => {
+    if (!currentBudget) return;
+    setIsLoading(true);
+    try {
+      const [trans, cats] = await Promise.all([
         mockApi.getTransactionsByBudgetId(currentBudget.id),
-        mockApi.getCategoriesByBudgetId(currentBudget.id), // Загружаем и категории
-      ])
-        .then(([trans, cats]) => {
-          setTransactions(trans);
-          setCategories(cats);
-        })
-        .catch(console.error) // TODO: Улучшить обработку
-        .finally(() => setIsLoading(false));
-    } else {
-      setTransactions([]);
-      setCategories([]);
+        mockApi.getCategoriesByBudgetId(currentBudget.id),
+      ]);
+      setTransactions(trans);
+      setCategories(cats);
+    } catch (error) {
+      console.error('Failed to load transactions/categories:', error);
+      // TODO: Показать ошибку
+    } finally {
+      setIsLoading(false);
     }
   }, [currentBudget]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]); // Зависимость от loadData (-> currentBudget)
+
+  // Открытие формы добавления
+  const handleAddTransaction = () => {
+    setTransactionToEdit(null);
+    setIsFormOpen(true);
+  };
+
+  // Открытие формы редактирования (передаем транзакцию)
+  const handleEditTransaction = (transaction: Transaction) => {
+    setTransactionToEdit(transaction);
+    setIsFormOpen(true);
+  };
+
+  // Колбэк после сохранения - перезагружаем данные
+  const handleTransactionSaved = () => {
+    loadData(); // loadData теперь перезагружает и транзакции, и категории
+    // TODO: Идеально было бы обновить состояние BudgetDetails тоже.
+    // Можно попробовать обновить BudgetContext, если вынести
+    // загрузку транзакций для расчета баланса туда.
+    // Пока оставим так, CategoryList обновится. BudgetDetails - нет.
+  };
 
   // Добавляем имена категорий к транзакциям для удобного отображения
   const transactionsWithDetails: TransactionWithCategoryName[] = useMemo(() => {
@@ -47,13 +75,6 @@ export function TransactionList() {
       categoryName: categoryMap.get(t.categoryId) || 'Без категории', // Имя категории или заглушка
     }));
   }, [transactions, categories]);
-
-  // TODO: Функция для открытия формы редактирования транзакции
-  const handleEditTransaction = (transaction: Transaction) => {
-    console.log('Edit transaction:', transaction.id);
-    // Логика открытия TransactionForm в режиме редактирования
-    alert('Редактирование транзакции пока не реализовано.');
-  };
 
   if (!currentBudget) {
     // Ничего не показываем, если бюджет не выбран
@@ -68,8 +89,10 @@ export function TransactionList() {
     <div className="mb-6">
       <div className="mb-3 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Последние транзакции:</h3>
-        {/* TODO: Кнопка "Добавить транзакцию" */}
-        {/* TODO: Кнопка/ссылка "Посмотреть все" */}
+        <Button variant="ghost" size="sm" onClick={handleAddTransaction}>
+          <PlusCircle className="mr-1 h-4 w-4" />
+          Добавить
+        </Button>
       </div>
 
       {transactionsWithDetails.length === 0 ? (
@@ -133,6 +156,16 @@ export function TransactionList() {
               </Button>
               {/* TODO: Реализовать переход на отдельную страницу/разворачивание списка */}
             </div>
+          )}
+          {/* Диалоговое окно формы транзакции */}
+          {currentBudget && (
+            <TransactionForm
+              budgetId={currentBudget.id}
+              transactionToEdit={transactionToEdit}
+              open={isFormOpen}
+              onOpenChange={setIsFormOpen}
+              onTransactionSaved={handleTransactionSaved}
+            />
           )}
         </div>
       )}

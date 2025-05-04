@@ -1,5 +1,6 @@
 import { Budget, Category, Transaction, TransactionType, WebAppUser } from '@/types';
-import { generateId } from './utils'; // Предполагаем, что утилита для генерации ID будет создана
+import { generateId } from './utils';
+import { TransactionFormData } from '@/components/features/transaction/TransactionForm.tsx'; // Предполагаем, что утилита для генерации ID будет создана
 
 // --- Начальные Моковые Данные ---
 
@@ -35,7 +36,7 @@ let categories: Category[] = [
   { id: 'c6', budgetId: 'b2', name: 'Рестораны', limit: 25000 },
 ];
 
-const transactions: Transaction[] = [
+let transactions: Transaction[] = [
   {
     id: generateId(),
     budgetId: 'b1',
@@ -238,4 +239,33 @@ export const addTransaction = async (
   return { ...newTransaction };
 };
 
-// TODO: Добавить updateTransaction, deleteTransaction
+export const updateTransaction = async (
+  transactionId: string,
+  data: Partial<TransactionFormData>
+): Promise<Transaction> => {
+  await fakeNetworkDelay();
+  console.log('Mock API: updateTransaction called for', transactionId, 'with data:', data);
+  const transactionIndex = transactions.findIndex((t) => t.id === transactionId);
+  if (transactionIndex === -1) {
+    throw new Error('Transaction not found');
+  }
+
+  // Обновляем только переданные поля (упрощенно)
+  const updatedTransaction = {
+    ...transactions[transactionIndex],
+    ...data,
+    // updatedAt: new Date(), // Для реального API
+    // lastEditor: currentUser, // Для реального API
+  };
+  transactions[transactionIndex] = updatedTransaction as Transaction; // Приведение типа, т.к. data частичное
+  console.warn('Update transaction in mockData is basic.');
+  return { ...updatedTransaction } as Transaction;
+};
+
+export const deleteTransaction = async (transactionId: string): Promise<boolean> => {
+  await fakeNetworkDelay();
+  console.log('Mock API: deleteTransaction called for', transactionId);
+  const initialLength = transactions.length;
+  transactions = transactions.filter((t) => t.id !== transactionId);
+  return transactions.length < initialLength;
+};
