@@ -16,9 +16,7 @@ import { BudgetProvider, useBudgets } from '@/contexts/BudgetContext';
 import { BudgetList } from '@/components/features/budget/BudgetList';
 import { BudgetDetails } from '@/components/features/budget/BudgetDetails';
 import { CategoryList } from '@/components/features/category/CategoryList';
-
-// Импорты для следующих этапов (пока закомментированы)
-// import { TransactionList } from '@/components/features/transaction/TransactionList';
+import { TransactionList } from '@/components/features/transaction/TransactionList'; // Импортируем список транзакций
 
 function AppContent() {
   // --- Логика SDK остается прежней (кроме popup) ---
@@ -56,7 +54,7 @@ function AppContent() {
       <Header />
       <PageWrapper>
         {/* Здесь будет основная логика приложения */}
-        <h2 className="mb-4 text-xl font-semibold">Бюджетный трекер</h2>
+        {/* <h2 className="text-xl font-semibold mb-4">Бюджетный трекер</h2> */}
 
         {/* Показываем список бюджетов */}
         <BudgetList />
@@ -70,14 +68,14 @@ function AppContent() {
           <>
             <BudgetDetails />
             <CategoryList />
-            {/* <TransactionList /> */} {/* Место для списка транзакций */}
+            <TransactionList /> {/* Добавляем список транзакций */}
           </>
         ) : (
           !isLoadingBudgets && (
             <div className="text-muted-foreground p-4 text-center">
               Создайте или выберите бюджет для начала.
             </div>
-          ) // Сообщение, если бюджеты есть, но ни один не выбран
+          )
         )}
 
         {/* Просто для отладки статуса SDK */}
