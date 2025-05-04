@@ -67,14 +67,18 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Функция добавления бюджета
   const addBudget = async (name: string, totalAmount: number): Promise<Budget | null> => {
     try {
+      console.log('BudgetContext: Calling mockApi.addBudget');
       const newBudget = await mockApi.addBudget(name, totalAmount);
       await reloadBudgets(); // Перезагружаем список после добавления
-      selectBudget(newBudget.id); // Выбираем новый бюджет
+      // Автоматически выбираем новый бюджет после перезагрузки
+      // selectBudget(newBudget.id); // selectBudget теперь вызывается внутри reloadBudgets при необходимости
+      console.log('BudgetContext: Budget added successfully, new budget ID:', newBudget.id);
       return newBudget;
     } catch (error) {
-      console.error('Failed to add budget:', error);
-      // Можно пробросить ошибку или показать уведомление
-      return null;
+      console.error('BudgetContext: Failed to add budget via mockApi:', error);
+      // Ошибку можно обработать здесь или пробросить дальше
+      // Для пользователя лучше обработать в форме через popup
+      return null; // Возвращаем null при ошибке
     }
   };
 
