@@ -35,6 +35,7 @@ export function BudgetList() {
   const [budgetToEdit, setBudgetToEdit] = useState<Budget | null>(null);
   const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
   const [expandedBudgetId, setExpandedBudgetId] = useState<string | null>(null);
+  const [isListExpanded, setIsListExpanded] = useState(false);
 
   // Колбэк после сохранения бюджета (просто перезагружаем список)
   const handleBudgetSaved = () => {
@@ -101,7 +102,17 @@ export function BudgetList() {
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between px-1">
-        <h3 className="text-md font-semibold">Бюджеты:</h3>
+        <div 
+          className="flex items-center gap-2 cursor-pointer" 
+          onClick={() => setIsListExpanded(!isListExpanded)}
+        >
+          <h3 className="text-md font-semibold">
+            {isListExpanded ? "Бюджеты:" : "Бюджет:"}
+          </h3>
+          {!isListExpanded && currentBudget && (
+            <span className="text-md">{currentBudget.name}</span>
+          )}
+        </div>
         <HapticButton 
           variant="ghost"
           size="sm"
@@ -130,7 +141,14 @@ export function BudgetList() {
 
       {/* Список бюджетов */}
       {allBudgets.length > 0 && !isLoadingBudgets && (
-        <div className="flex flex-col space-y-1">
+        <div 
+          className={cn(
+            "flex flex-col space-y-1 transition-all duration-300 ease-in-out",
+            isListExpanded 
+              ? "opacity-100 max-h-[1000px] overflow-visible" 
+              : "opacity-0 max-h-0 overflow-hidden"
+          )}
+        >
           {allBudgets.map((budget) => (
             <React.Fragment key={budget.id}>
               <ExpandableItem
