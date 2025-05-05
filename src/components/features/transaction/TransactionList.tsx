@@ -156,7 +156,7 @@ export function TransactionList() {
   }
 
   return (
-    <div className="mb-6">
+    <div className="mb-6" data-transaction-list>
       <div className="mb-3 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Последние транзакции:</h3>
         {/* Проверяем обработчик кнопки */}

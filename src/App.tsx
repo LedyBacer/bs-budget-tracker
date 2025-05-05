@@ -24,6 +24,8 @@ import {
   CategoryListSkeleton,
   TransactionListSkeleton,
 } from '@/components/ui/skeletons';
+import { HapticButton } from '@/components/ui/haptic-button';
+import { PlusCircle } from 'lucide-react';
 
 function AppContent() {
   const { currentBudget, isLoadingBudgets, errorLoadingBudgets } = useBudgets();
@@ -85,6 +87,23 @@ function AppContent() {
         ) : currentBudget ? (
           <>
             <BudgetDetails />
+            <HapticButton
+              variant="default"
+              size="lg"
+              className="mb-6 w-full"
+              onClick={() => {
+                const transactionList = document.querySelector('[data-transaction-list]');
+                if (transactionList) {
+                  const addButton = transactionList.querySelector('button');
+                  if (addButton) {
+                    addButton.click();
+                  }
+                }
+              }}
+            >
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Добавить транзакцию
+            </HapticButton>
             <CategoryList />
             <TransactionList />
           </>
