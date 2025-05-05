@@ -1,5 +1,5 @@
 // src/components/features/category/CategoryList.tsx
-import { useState, useEffect, useMemo, useCallback } from 'react'; // Добавили useCallback
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'; // Добавили useCallback и useRef
 import { useBudgets } from '@/contexts/BudgetContext';
 import { Category, Transaction } from '@/types';
 import * as mockApi from '@/lib/mockData';
@@ -29,6 +29,32 @@ interface CategoryWithBalance extends Category {
   spent: number;
   balance: number;
   progress: number; // Процент потраченного от лимита
+  transactionCount: number; // Добавляем количество транзакций
+}
+
+// Хук для определения количества видимых карточек
+function useVisibleCardsCount() {
+  const [count, setCount] = useState(1);
+  useEffect(() => {
+    function updateCount() {
+      if (window.innerWidth >= 1024) setCount(3);
+      else if (window.innerWidth >= 640) setCount(2);
+      else setCount(1);
+    }
+    updateCount();
+    window.addEventListener('resize', updateCount);
+    return () => window.removeEventListener('resize', updateCount);
+  }, []);
+  return count;
+}
+
+// Вспомогательная функция для чанков
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const res: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    res.push(arr.slice(i, i + size));
+  }
+  return res;
 }
 
 export function CategoryList() {
@@ -39,7 +65,16 @@ export function CategoryList() {
   const [isFormOpen, setIsFormOpen] = useState(false); // Состояние для диалога
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null); // Для редактирования
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null); // Добавили
+  const [currentPage, setCurrentPage] = useState(0);
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const visibleCardsCount = 3; // теперь всегда 3 вертикально
+
+  // Функция для переключения раскрытого элемента
+  const handleToggleExpand = (categoryId: string) => {
+    mediumHaptic();
+    setExpandedCategoryId((prevId) => (prevId === categoryId ? null : categoryId));
+  };
 
   const loadData = useCallback(async () => {
     if (!currentBudget) return;
@@ -116,20 +151,43 @@ export function CategoryList() {
         spent,
         balance,
         progress,
+        transactionCount: categoryTransactions.length, // Добавляем количество транзакций
       };
-    });
+    }).sort((a, b) => b.transactionCount - a.transactionCount); // Сортируем по количеству транзакций
   }, [categories, transactions]);
+
+  // Чанкируем категории для горизонтального скролла
+  const categoryChunks = useMemo(() => chunkArray(categoriesWithBalance, visibleCardsCount), [categoriesWithBalance]);
 
   // Общая сумма лимитов по категориям
   const totalLimits = useMemo(() => {
     return categories.reduce((sum, cat) => sum + cat.limit, 0);
   }, [categories]);
 
-  // Функция для переключения раскрытого элемента
-  const handleToggleExpand = (categoryId: string) => {
-    mediumHaptic();
-    setExpandedCategoryId((prevId) => (prevId === categoryId ? null : categoryId));
-  };
+  // Функция для определения текущей страницы при скролле
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    const scrollLeft = container.scrollLeft;
+    // Находим первую колонку (chunk)
+    const column = container.querySelector('div.flex.flex-col');
+    if (!column) return;
+    const colWidth = column.clientWidth;
+    const gap = 16;
+    // Текущая страница (округляем до ближайшей)
+    const newPage = Math.round(scrollLeft / (colWidth + gap));
+    if (newPage !== currentPage) {
+      setCurrentPage(newPage);
+    }
+  }, [currentPage]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container && categoryChunks.length > 1) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll, categoryChunks.length]);
 
   if (!currentBudget) return null;
 
@@ -168,97 +226,223 @@ export function CategoryList() {
       ) : isLoading && categoriesWithBalance.length === 0 ? (
         <div className="text-muted-foreground p-4 text-center">Загрузка...</div>
       ) : (
-        <div className="space-y-2">
-          {categoriesWithBalance.map((category) => (
-            <React.Fragment key={category.id}>
-              <ExpandableItem
-                isExpanded={expandedCategoryId === category.id}
-                onToggle={() => handleToggleExpand(category.id)}
-                actions={
-                  <div className="flex w-full items-stretch gap-1">
-                    <AlertDialog
-                      open={!!categoryToDelete && categoryToDelete.id === category.id}
-                      onOpenChange={(open) => !open && setCategoryToDelete(null)}
-                    >
-                      <AlertDialogTrigger asChild>
-                        <HapticButton
-                          variant="ghost"
-                          size="sm"
-                          className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCategoryToDelete(category);
-                          }}
-                          aria-label="Удалить категорию"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Удалить
-                        </HapticButton>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Вы уверены, что хотите удалить категорию "{category.name}"? Это
-                            действие нельзя будет отменить. Категорию можно удалить, только если по ней
-                            нет транзакций.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}>
-                            Отмена
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={async (e) => {
+        <div className="relative">
+          {categoriesWithBalance.length <= 3 ? (
+            <div className="flex flex-col gap-2 w-full">
+              {categoriesWithBalance.map((category) => (
+                <ExpandableItem
+                  key={category.id}
+                  isExpanded={expandedCategoryId === category.id}
+                  onToggle={() => handleToggleExpand(category.id)}
+                  actions={
+                    <div className="flex w-full items-stretch gap-1">
+                      <AlertDialog
+                        open={!!categoryToDelete && categoryToDelete.id === category.id}
+                        onOpenChange={(open) => !open && setCategoryToDelete(null)}
+                      >
+                        <AlertDialogTrigger asChild>
+                          <HapticButton
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+                            onClick={(e) => {
                               e.stopPropagation();
-                              await handleDeleteCategory();
+                              setCategoryToDelete(category);
                             }}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            aria-label="Удалить категорию"
                           >
+                            <Trash2 className="mr-2 h-4 w-4" />
                             Удалить
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                    <HapticButton
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 rounded-md border border-border"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditCategoryClick(category);
-                      }}
-                      aria-label="Редактировать категорию"
-                    >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Редактировать
-                    </HapticButton>
-                  </div>
-                }
-              >
-                <div
-                  className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm"
+                          </HapticButton>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Вы уверены, что хотите удалить категорию "{category.name}"? Это
+                              действие нельзя будет отменить. Категорию можно удалить, только если по ней
+                              нет транзакций.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}>
+                              Отмена
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handleDeleteCategory();
+                              }}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Удалить
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      <HapticButton
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 rounded-md border border-border"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditCategoryClick(category);
+                        }}
+                        aria-label="Редактировать категорию"
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Редактировать
+                      </HapticButton>
+                    </div>
+                  }
                 >
-                  <div className="mb-1 flex items-center justify-between pr-8">
-                    <span className="font-medium">{category.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      Лимит: {formatCurrency(category.limit)}
-                    </span>
+                  <div className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm h-full w-full">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="font-medium">{category.name}</span>
+                      <span className="text-muted-foreground text-xs">
+                        Лимит: {formatCurrency(category.limit)}
+                      </span>
+                    </div>
+                    <Progress value={category.progress} className="mb-1 h-2" />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        Расход: {formatCurrency(category.spent)}
+                      </span>
+                      <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
+                        Остаток: {formatCurrency(category.balance)}
+                      </span>
+                    </div>
                   </div>
-                  <Progress value={category.progress} className="mb-1 h-2" />
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      Расход: {formatCurrency(category.spent)}
-                    </span>
-                    <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
-                      Остаток: {formatCurrency(category.balance)}
-                    </span>
+                </ExpandableItem>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div
+                ref={scrollContainerRef}
+                className="flex flex-nowrap space-x-4 overflow-x-auto pb-4 w-full snap-x snap-mandatory"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {categoryChunks.map((chunk, chunkIdx) => (
+                  <div
+                    key={chunkIdx}
+                    className="min-w-[320px] max-w-[340px] flex-shrink-0 snap-start flex flex-col gap-2"
+                  >
+                    {chunk.map((category) => (
+                      <ExpandableItem
+                        key={category.id}
+                        isExpanded={expandedCategoryId === category.id}
+                        onToggle={() => handleToggleExpand(category.id)}
+                        actions={
+                          <div className="flex w-full items-stretch gap-1">
+                            <AlertDialog
+                              open={!!categoryToDelete && categoryToDelete.id === category.id}
+                              onOpenChange={(open) => !open && setCategoryToDelete(null)}
+                            >
+                              <AlertDialogTrigger asChild>
+                                <HapticButton
+                                  variant="ghost"
+                                  size="sm"
+                                  className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCategoryToDelete(category);
+                                  }}
+                                  aria-label="Удалить категорию"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Удалить
+                                </HapticButton>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Вы уверены, что хотите удалить категорию "{category.name}"? Это
+                                    действие нельзя будет отменить. Категорию можно удалить, только если по ней
+                                    нет транзакций.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}>
+                                    Отмена
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await handleDeleteCategory();
+                                    }}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Удалить
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            <HapticButton
+                              variant="ghost"
+                              size="sm"
+                              className="flex-1 rounded-md border border-border"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCategoryClick(category);
+                              }}
+                              aria-label="Редактировать категорию"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Редактировать
+                            </HapticButton>
+                          </div>
+                        }
+                      >
+                        <div className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm h-full">
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="font-medium">{category.name}</span>
+                            <span className="text-muted-foreground text-xs">
+                              Лимит: {formatCurrency(category.limit)}
+                            </span>
+                          </div>
+                          <Progress value={category.progress} className="mb-1 h-2" />
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              Расход: {formatCurrency(category.spent)}
+                            </span>
+                            <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
+                              Остаток: {formatCurrency(category.balance)}
+                            </span>
+                          </div>
+                        </div>
+                      </ExpandableItem>
+                    ))}
                   </div>
-                </div>
-              </ExpandableItem>
-            </React.Fragment>
-          ))}
+                ))}
+              </div>
+              <div className="flex justify-center gap-1 mt-2">
+                {Array.from({ length: categoryChunks.length }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      if (!scrollContainerRef.current) return;
+                      const container = scrollContainerRef.current;
+                      const column = container.querySelector('div.flex.flex-col');
+                      if (!column) return;
+                      const colWidth = column.clientWidth;
+                      const gap = 16;
+                      container.scrollTo({
+                        left: index * (colWidth + gap),
+                        behavior: 'smooth'
+                      });
+                    }}
+                    className="h-2 w-2 rounded-full transition-colors duration-200"
+                    style={{
+                      backgroundColor: index === currentPage ? 'var(--primary)' : 'var(--border)'
+                    }}
+                    aria-label={`Перейти к странице ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
