@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 interface CategoryWithBalance extends Category {
   spent: number;
@@ -35,6 +36,7 @@ export function CategoryList() {
   const [isFormOpen, setIsFormOpen] = useState(false); // Состояние для диалога
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null); // Для редактирования
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null); // Добавляем состояние для активного элемента
 
   const loadData = useCallback(async () => {
     if (!currentBudget) return;
@@ -156,13 +158,14 @@ export function CategoryList() {
           В этом бюджете еще нет категорий. Нажмите "Добавить".
         </div>
       ) : isLoading && categoriesWithBalance.length === 0 ? (
-        <div className="text-muted-foreground p-4 text-center">Загрузка...</div> // Загрузка если список пока пуст
+        <div className="text-muted-foreground p-4 text-center">Загрузка...</div>
       ) : (
         <div className="space-y-3">
           {categoriesWithBalance.map((category) => (
             <div
               key={category.id}
               className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm"
+              onClick={() => setActiveCategoryId(activeCategoryId === category.id ? null : category.id)}
             >
               <AlertDialog
                 open={!!categoryToDelete && categoryToDelete.id === category.id}
@@ -172,9 +175,13 @@ export function CategoryList() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-destructive hover:text-destructive absolute top-1 right-8 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                    className={cn(
+                      "text-destructive hover:text-destructive absolute top-1 right-8 h-6 w-6",
+                      "opacity-0 transition-opacity group-hover:opacity-100",
+                      activeCategoryId === category.id && "opacity-100"
+                    )}
                     onClick={(e) => {
-                      e.stopPropagation(); // Предотвратить клик по родительскому элементу
+                      e.stopPropagation();
                       setCategoryToDelete(category);
                     }}
                     aria-label="Удалить категорию"
@@ -205,12 +212,18 @@ export function CategoryList() {
                 </AlertDialogContent>
               </AlertDialog>
 
-              {/* Кнопка редактирования */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-1 right-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                onClick={() => handleEditCategoryClick(category)}
+                className={cn(
+                  "absolute top-1 right-1 h-6 w-6",
+                  "opacity-0 transition-opacity group-hover:opacity-100",
+                  activeCategoryId === category.id && "opacity-100"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditCategoryClick(category);
+                }}
                 aria-label="Редактировать категорию"
               >
                 <Pencil className="h-3 w-3" />

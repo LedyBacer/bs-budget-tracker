@@ -30,8 +30,9 @@ export function BudgetList() {
     deleteBudget: deleteBudgetFromContext,
   } = useBudgets();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [budgetToEdit, setBudgetToEdit] = useState<Budget | null>(null); // Состояние для редактируемого бюджета
-  const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null); // Состояние для удаляемого бюджета
+  const [budgetToEdit, setBudgetToEdit] = useState<Budget | null>(null);
+  const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
+  const [activeBudgetId, setActiveBudgetId] = useState<string | null>(null); // Добавляем состояние для активного элемента
 
   // Колбэк после сохранения бюджета (просто перезагружаем список)
   const handleBudgetSaved = () => {
@@ -125,19 +126,25 @@ export function BudgetList() {
         <div className="flex flex-col space-y-1">
           {allBudgets.map((budget) => (
             <div key={budget.id} className="group relative flex">
-              {/* Обертка для позиционирования кнопок */}
               <Button
                 variant={currentBudget?.id === budget.id ? 'secondary' : 'ghost'}
-                onClick={() => selectBudget(budget.id)}
+                onClick={() => {
+                  selectBudget(budget.id);
+                  setActiveBudgetId(activeBudgetId === budget.id ? null : budget.id);
+                }}
                 className={cn(
-                  'h-auto w-full justify-start py-2 pr-16 pl-3 text-left', // Добавили отступ справа для кнопок
+                  'h-auto w-full justify-start py-2 pr-16 pl-3 text-left',
                   currentBudget?.id === budget.id && 'font-semibold'
                 )}
               >
                 {budget.name}
               </Button>
-              {/* Кнопки редактирования и удаления */}
-              <div className="absolute top-0 right-1 bottom-0 flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+              <div className={cn(
+                "absolute top-0 right-1 bottom-0 flex items-center",
+                "opacity-0 transition-opacity",
+                "group-hover:opacity-100",
+                activeBudgetId === budget.id && "opacity-100"
+              )}>
                 <Button
                   variant="ghost"
                   size="icon"
