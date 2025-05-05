@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { TransactionListSkeleton } from '@/components/ui/skeletons';
 
 // Опционально: Интерфейс для транзакции с присоединенным именем категории
 interface TransactionWithCategoryName extends Transaction {
@@ -150,7 +151,8 @@ export function TransactionList() {
   }
 
   if (isLoading) {
-    return <div className="text-muted-foreground p-4 text-center">Загрузка транзакций...</div>;
+    // return <div className="text-muted-foreground p-4 text-center">Загрузка транзакций...</div>;
+    return <TransactionListSkeleton />;
   }
 
   return (
@@ -166,7 +168,8 @@ export function TransactionList() {
 
       {/* Список транзакций */}
       {isLoading && transactions.length === 0 ? (
-        <div className="text-muted-foreground p-4 text-center">Загрузка транзакций...</div>
+        // <div className="text-muted-foreground p-4 text-center">Загрузка транзакций...</div>
+        <TransactionListSkeleton />
       ) : transactionsWithDetails.length === 0 ? (
         <div className="text-muted-foreground bg-card rounded-lg border p-4 text-center">
           Транзакций по этому бюджету еще нет.

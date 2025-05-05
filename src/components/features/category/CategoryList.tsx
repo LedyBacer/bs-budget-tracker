@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ExpandableItem } from '@/components/ui/expandable-item';
 import React from 'react';
+import { CategoryListSkeleton } from '@/components/ui/skeletons';
 
 interface CategoryWithBalance extends Category {
   spent: number;
@@ -133,8 +134,7 @@ export function CategoryList() {
   if (!currentBudget) return null;
 
   if (isLoading && categories.length === 0) {
-    // Показываем загрузку только если список пуст
-    return <div className="text-muted-foreground p-4 text-center">Загрузка категорий...</div>;
+    return <CategoryListSkeleton />;
   }
 
   return (

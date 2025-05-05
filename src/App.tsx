@@ -17,7 +17,13 @@ import { BudgetProvider, useBudgets } from '@/contexts/BudgetContext';
 import { BudgetList } from '@/components/features/budget/BudgetList';
 import { BudgetDetails } from '@/components/features/budget/BudgetDetails';
 import { CategoryList } from '@/components/features/category/CategoryList';
-import { TransactionList } from '@/components/features/transaction/TransactionList'; // Импортируем список транзакций
+import { TransactionList } from '@/components/features/transaction/TransactionList';
+import {
+  BudgetListSkeleton,
+  BudgetDetailsSkeleton,
+  CategoryListSkeleton,
+  TransactionListSkeleton,
+} from '@/components/ui/skeletons';
 
 function AppContent() {
   const { currentBudget, isLoadingBudgets, errorLoadingBudgets } = useBudgets();
@@ -56,22 +62,27 @@ function AppContent() {
     <div className="bg-background text-foreground flex min-h-screen flex-col">
       <Header />
       <PageWrapper>
-        {/* Здесь будет основная логика приложения */}
-        {/* <h2 className="text-xl font-semibold mb-4">Бюджетный трекер</h2> */}
-
         {/* Показываем список бюджетов */}
-        <BudgetList />
+        {isLoadingBudgets ? (
+          <BudgetListSkeleton />
+        ) : (
+          <BudgetList />
+        )}
 
         {/* Показываем детали и категории только если бюджет выбран */}
         {isLoadingBudgets ? (
-          <div className="text-muted-foreground p-4 text-center">Загрузка...</div>
+          <>
+            <BudgetDetailsSkeleton />
+            <CategoryListSkeleton />
+            <TransactionListSkeleton />
+          </>
         ) : errorLoadingBudgets ? (
           <div className="text-destructive p-4 text-center">Ошибка загрузки данных.</div>
         ) : currentBudget ? (
           <>
             <BudgetDetails />
             <CategoryList />
-            <TransactionList /> {/* Добавляем список транзакций */}
+            <TransactionList />
           </>
         ) : (
           !isLoadingBudgets && (

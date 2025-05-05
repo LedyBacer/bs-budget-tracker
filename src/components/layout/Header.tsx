@@ -13,7 +13,7 @@ export function Header() {
       : undefined;
 
   return (
-    <header className="bg-background sticky top-0 z-10 border-b p-4">
+    <header className="bg-background border-b p-4">
       <div className="container mx-auto flex items-center justify-between">
         <h1 className="text-xl font-bold">Shared Budget</h1>
         {user && <div className="text-muted-foreground text-sm">Привет, {user.first_name}!</div>}
