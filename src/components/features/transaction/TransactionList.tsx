@@ -7,6 +7,7 @@ import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle } from 'lucide-react'; // Иконки для типов и редактирования
 import { Button } from '@/components/ui/button';
 import { TransactionForm } from './TransactionForm';
+import { ExpandableItem } from '@/components/ui/expandable-item';
 
 // Опционально: Интерфейс для транзакции с присоединенным именем категории
 interface TransactionWithCategoryName extends Transaction {
@@ -20,6 +21,7 @@ export function TransactionList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
   // TODO: Обработка ошибок
 
   // --- ЛОГ МОНТИРОВАНИЯ/РАЗМОНТИРОВАНИЯ ---
@@ -101,6 +103,11 @@ export function TransactionList() {
     }));
   }, [transactions, categories]);
 
+  // Функция для переключения раскрытого элемента
+  const handleToggleExpand = (transactionId: string) => {
+    setExpandedTransactionId((prevId) => (prevId === transactionId ? null : transactionId));
+  };
+
   if (!currentBudget) {
     // Ничего не показываем, если бюджет не выбран
     return null;
@@ -132,50 +139,60 @@ export function TransactionList() {
         <div className="space-y-2">
           {/* Отображаем, например, последние 5 транзакций */}
           {transactionsWithDetails.slice(0, 5).map((transaction) => (
-            <div
+            <ExpandableItem
               key={transaction.id}
-              className="bg-card text-card-foreground group flex items-center justify-between rounded-lg border p-3 text-sm"
+              isExpanded={expandedTransactionId === transaction.id}
+              onToggle={() => handleToggleExpand(transaction.id)}
+              actions={
+                <div className="flex w-full items-stretch">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 rounded-md border border-border"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditTransaction(transaction);
+                    }}
+                    aria-label="Редактировать транзакцию"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Редактировать
+                  </Button>
+                </div>
+              }
             >
-              <div className="flex items-center space-x-3">
-                {transaction.type === 'expense' ? (
-                  <ArrowDownCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
-                ) : (
-                  <ArrowUpCircle className="h-5 w-5 flex-shrink-0 text-green-500" />
-                )}
-                <div>
-                  <div className="font-medium">
-                    {transaction.name ||
-                      transaction.categoryName ||
-                      (transaction.type === 'expense' ? 'Расход' : 'Пополнение')}
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    {transaction.categoryName} • {transaction.author.first_name} •{' '}
-                    {formatDate(transaction.createdAt, { month: 'short', day: 'numeric' })}
+              <div className="bg-card text-card-foreground group flex items-center justify-between rounded-lg border p-3 text-sm">
+                <div className="flex items-center space-x-3">
+                  {transaction.type === 'expense' ? (
+                    <ArrowDownCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
+                  ) : (
+                    <ArrowUpCircle className="h-5 w-5 flex-shrink-0 text-green-500" />
+                  )}
+                  <div>
+                    <div className="font-medium">
+                      {transaction.name ||
+                        transaction.categoryName ||
+                        (transaction.type === 'expense' ? 'Расход' : 'Пополнение')}
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      {transaction.categoryName} • {transaction.author.first_name} •{' '}
+                      {formatDate(transaction.createdAt, { month: 'short', day: 'numeric' })}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <span
+                    className={cn(
+                      'font-semibold',
+                      transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'
+                    )}
+                  >
+                    {transaction.type === 'expense' ? '-' : '+'}
+                    {formatCurrency(transaction.amount)}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <span
-                  className={cn(
-                    'font-semibold',
-                    transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'
-                  )}
-                >
-                  {transaction.type === 'expense' ? '-' : '+'}
-                  {formatCurrency(transaction.amount)}
-                </span>
-                {/* Кнопка редактирования */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 opacity-50 hover:opacity-100"
-                  onClick={() => handleEditTransaction(transaction)}
-                  aria-label="Редактировать транзакцию"
-                >
-                  <Edit className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
+            </ExpandableItem>
           ))}
           {/* Показываем кнопку "Показать все", если транзакций больше 5 */}
           {transactions.length > 5 && (
