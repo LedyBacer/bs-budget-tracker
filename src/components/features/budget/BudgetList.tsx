@@ -1,7 +1,7 @@
 // src/components/features/budget/BudgetList.tsx
 import React, { useState } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
-import { Button } from '@/components/ui/button';
+import { HapticButton } from '@/components/ui/haptic-button';
 import { cn } from '@/lib/utils';
 import { PlusCircle, Pencil, Trash2 } from 'lucide-react'; // Добавили иконки
 import { BudgetForm } from './BudgetForm';
@@ -82,7 +82,7 @@ export function BudgetList() {
   if (errorLoadingBudgets) {
     return (
       <div className="text-destructive p-4 text-center">
-        Ошибка загрузки бюджетов: {errorLoadingBudgets.message}
+        Ошибка загрузки бюджетов: {(errorLoadingBudgets as any)?.message}
       </div>
     );
   }
@@ -95,7 +95,7 @@ export function BudgetList() {
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Бюджеты:</h3>
-        <Button
+        <HapticButton
           variant="ghost"
           size="sm"
           onClick={handleAddBudgetClick}
@@ -103,7 +103,7 @@ export function BudgetList() {
         >
           <PlusCircle className="mr-1 h-4 w-4" />
           Добавить
-        </Button>
+        </HapticButton>
       </div>
 
       {/* Индикаторы загрузки/ошибки/пустого списка */}
@@ -112,7 +112,7 @@ export function BudgetList() {
       )}
       {errorLoadingBudgets && !isLoadingBudgets && (
         <div className="text-destructive p-4 text-center">
-          Ошибка загрузки бюджетов: {errorLoadingBudgets.message}
+          Ошибка загрузки бюджетов: {(errorLoadingBudgets as any)?.message}
         </div>
       )}
       {allBudgets.length === 0 && !isLoadingBudgets && !errorLoadingBudgets && (
@@ -126,7 +126,7 @@ export function BudgetList() {
         <div className="flex flex-col space-y-1">
           {allBudgets.map((budget) => (
             <div key={budget.id} className="group relative flex">
-              <Button
+              <HapticButton
                 variant={currentBudget?.id === budget.id ? 'secondary' : 'ghost'}
                 onClick={() => {
                   selectBudget(budget.id);
@@ -138,14 +138,14 @@ export function BudgetList() {
                 )}
               >
                 {budget.name}
-              </Button>
+              </HapticButton>
               <div className={cn(
                 "absolute top-0 right-1 bottom-0 flex items-center",
                 "opacity-0 transition-opacity",
                 "group-hover:opacity-100",
                 activeBudgetId === budget.id && "opacity-100"
               )}>
-                <Button
+                <HapticButton
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
@@ -153,7 +153,7 @@ export function BudgetList() {
                   aria-label="Редактировать бюджет"
                 >
                   <Pencil className="h-4 w-4" />
-                </Button>
+                </HapticButton>
 
                 {/* Обертка для AlertDialog Trigger */}
                 <AlertDialog
@@ -161,7 +161,7 @@ export function BudgetList() {
                   onOpenChange={(open) => !open && setBudgetToDelete(null)}
                 >
                   <AlertDialogTrigger asChild>
-                    <Button
+                    <HapticButton
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive h-7 w-7"
@@ -169,7 +169,7 @@ export function BudgetList() {
                       aria-label="Удалить бюджет"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </HapticButton>
                   </AlertDialogTrigger>
                   {/* Диалог подтверждения удаления вынесен ниже */}
                 </AlertDialog>
@@ -202,12 +202,17 @@ export function BudgetList() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setBudgetToDelete(null)}>Отмена</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmDelete}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Удалить
+              <AlertDialogCancel asChild>
+                <HapticButton onClick={() => setBudgetToDelete(null)} impactStyle="soft">Отмена</HapticButton>
+              </AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <HapticButton
+                  onClick={handleConfirmDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  impactStyle="heavy"
+                >
+                  Удалить
+                </HapticButton>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
