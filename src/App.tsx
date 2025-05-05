@@ -40,7 +40,11 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const handleBackClick = () => console.log('Back button clicked!');
+    const handleBackClick = () => {
+      if (miniApp.close.isAvailable()) {
+        miniApp.close();
+      }
+    };
     backButton.show.ifAvailable();
     const cleanup = backButton.onClick.isAvailable()
       ? backButton.onClick(handleBackClick)
