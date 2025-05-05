@@ -10,6 +10,7 @@ import {
   miniApp,
   backButton,
   mainButton,
+  swipeBehavior,
   // viewport, // Если нужен сразу viewport, но он монтируется асинхронно
 } from '@telegram-apps/sdk-react';
 
@@ -25,6 +26,14 @@ try {
   // Кнопки, если используются глобально или с самого начала
   backButton.mount();
   mainButton.mount();
+  
+  // Отключаем вертикальный свайп
+  if (swipeBehavior.mount.isAvailable()) {
+    swipeBehavior.mount();
+    if (swipeBehavior.disableVertical.isAvailable()) {
+      swipeBehavior.disableVertical();
+    }
+  }
 
   // Опционально: Асинхронное монтирование других компонентов, если нужно сразу
   // if (viewport.mount.isAvailable()) {

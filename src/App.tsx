@@ -48,15 +48,15 @@ function AppContent() {
     return () => cleanup?.();
   }, []);
 
-  useEffect(() => {
-    // Пока оставим MainButton без действия
-    const handleMainClick = () => console.log('Main button clicked!');
-    mainButton.setParams.ifAvailable({ text: 'MAIN ACTION', isVisible: true, isEnabled: false }); // Пока выключим
-    const cleanup = mainButton.onClick.isAvailable()
-      ? mainButton.onClick(handleMainClick)
-      : undefined;
-    return () => cleanup?.();
-  }, []);
+  // useEffect(() => {
+  //   // Пока оставим MainButton без действия
+  //   const handleMainClick = () => console.log('Main button clicked!');
+  //   mainButton.setParams.ifAvailable({ text: 'MAIN ACTION', isVisible: true, isEnabled: false }); // Пока выключим
+  //   const cleanup = mainButton.onClick.isAvailable()
+  //     ? mainButton.onClick(handleMainClick)
+  //     : undefined;
+  //   return () => cleanup?.();
+  // }, []);
 
   return (
     <div className="bg-background text-foreground flex min-h-screen flex-col">
@@ -94,12 +94,11 @@ function AppContent() {
 
         {/* --- Отладочный блок SDK --- */}
         <div className="mt-auto pt-6">
-          {' '}
           {/* Добавим отступ сверху */}
           <details className="bg-card text-card-foreground rounded-lg border p-4 text-sm">
             <summary className="mb-2 cursor-pointer font-semibold">SDK Status & Debug Info</summary>
 
-            <div className="mt-2 space-y-1">
+            {/* <div className="mt-2 space-y-1">
               <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">Buttons:</h4>
               <p>Back Button Visible: {useSignal(backButton.isVisible) ? '✅ Yes' : '❌ No'}</p>
               <p>Main Button Visible: {useSignal(mainButton.isVisible) ? '✅ Yes' : '❌ No'}</p>
@@ -107,7 +106,7 @@ function AppContent() {
               <p>
                 Main Button Loading: {useSignal(mainButton.isLoaderVisible) ? '⏳ Yes' : '✅ No'}
               </p>
-            </div>
+            </div> */}
 
             <div className="mt-3 space-y-1">
               <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">
