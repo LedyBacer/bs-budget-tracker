@@ -4,10 +4,21 @@ import { useBudgets } from '@/contexts/BudgetContext';
 import { Transaction, Category, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { formatCurrency, formatDate, cn, mediumHaptic } from '@/lib/utils';
-import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle } from 'lucide-react'; // Иконки для типов и редактирования
+import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle, Trash2 } from 'lucide-react'; // Иконки для типов и редактирования, добавляем иконку Trash2
 import { HapticButton } from '@/components/ui/haptic-button';
 import { TransactionForm } from './TransactionForm';
 import { ExpandableItem } from '@/components/ui/expandable-item';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 // Опционально: Интерфейс для транзакции с присоединенным именем категории
 interface TransactionWithCategoryName extends Transaction {
@@ -22,6 +33,8 @@ export function TransactionList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   // TODO: Обработка ошибок
 
   // --- ЛОГ МОНТИРОВАНИЯ/РАЗМОНТИРОВАНИЯ ---
@@ -109,6 +122,28 @@ export function TransactionList() {
     setExpandedTransactionId((prevId) => (prevId === transactionId ? null : transactionId));
   };
 
+  // Функция для удаления транзакции
+  const handleDeleteTransaction = async (transaction: Transaction, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setTransactionToDelete(transaction);
+  };
+
+  // Финальное удаление после подтверждения в AlertDialog
+  const handleConfirmDelete = async () => {
+    if (!transactionToDelete) return;
+    setIsDeleting(true);
+    try {
+      await mockApi.deleteTransaction(transactionToDelete.id);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+      // TODO: Показать ошибку пользователю
+    } finally {
+      setIsDeleting(false);
+      setTransactionToDelete(null);
+    }
+  };
+
   if (!currentBudget) {
     // Ничего не показываем, если бюджет не выбран
     return null;
@@ -145,7 +180,44 @@ export function TransactionList() {
               isExpanded={expandedTransactionId === transaction.id}
               onToggle={() => handleToggleExpand(transaction.id)}
               actions={
-                <div className="flex w-full items-stretch">
+                <div className="flex w-full items-stretch gap-2">
+                  <AlertDialog
+                    open={transactionToDelete?.id === transaction.id}
+                    onOpenChange={(open) => !open && setTransactionToDelete(null)}
+                  >
+                    <AlertDialogTrigger asChild>
+                      <HapticButton
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+                        onClick={(e) => handleDeleteTransaction(transaction, e)}
+                        aria-label="Удалить транзакцию"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Удалить
+                      </HapticButton>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Удалить транзакцию?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Вы уверены, что хотите удалить эту транзакцию? Это действие нельзя будет отменить.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setTransactionToDelete(null); }}>Отмена</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await handleConfirmDelete();
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Удалить
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <HapticButton
                     variant="ghost"
                     size="sm"
