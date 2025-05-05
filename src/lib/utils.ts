@@ -1,4 +1,5 @@
 // src/lib/utils.ts
+import { hapticFeedback } from '@telegram-apps/sdk-react';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -37,4 +38,10 @@ export function formatDate(
     // minute: '2-digit',
   };
   return new Intl.DateTimeFormat('ru-RU', { ...defaultOptions, ...options }).format(dateObj);
+}
+
+export function mediumHaptic() {
+  if (hapticFeedback.impactOccurred.isAvailable()) {
+    hapticFeedback.impactOccurred('medium');
+  }
 }

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
 import { Transaction, Category, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, cn, mediumHaptic } from '@/lib/utils';
 import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle } from 'lucide-react'; // Иконки для типов и редактирования
 import { HapticButton } from '@/components/ui/haptic-button';
 import { TransactionForm } from './TransactionForm';
@@ -105,6 +105,7 @@ export function TransactionList() {
 
   // Функция для переключения раскрытого элемента
   const handleToggleExpand = (transactionId: string) => {
+    mediumHaptic();
     setExpandedTransactionId((prevId) => (prevId === transactionId ? null : transactionId));
   };
 

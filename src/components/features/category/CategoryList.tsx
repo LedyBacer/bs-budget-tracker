@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'; // Добав
 import { useBudgets } from '@/contexts/BudgetContext';
 import { Category, Transaction } from '@/types';
 import * as mockApi from '@/lib/mockData';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, mediumHaptic } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { HapticButton } from '@/components/ui/haptic-button';
 import { Pencil, PlusCircle } from 'lucide-react'; // Иконки
@@ -126,6 +126,7 @@ export function CategoryList() {
 
   // Функция для переключения раскрытого элемента
   const handleToggleExpand = (categoryId: string) => {
+    mediumHaptic();
     setExpandedCategoryId((prevId) => (prevId === categoryId ? null : categoryId));
   };
 
