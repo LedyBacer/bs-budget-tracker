@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
+import { HapticButton } from '@/components/ui/haptic-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -167,13 +167,13 @@ export function CategoryForm({
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isSubmitting}>
+              <HapticButton type="button" variant="outline" disabled={isSubmitting}>
                 Отмена
-              </Button>
+              </HapticButton>
             </DialogClose>
-            <Button type="submit" disabled={isSubmitting}>
+            <HapticButton type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Сохранение...' : 'Сохранить'}
-            </Button>
+            </HapticButton>
           </DialogFooter>
         </form>
       </DialogContent>

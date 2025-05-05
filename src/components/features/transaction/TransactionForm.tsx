@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
+import { HapticButton } from '@/components/ui/haptic-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -444,17 +444,17 @@ export function TransactionForm({
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isSubmitting}>
+              <HapticButton type="button" variant="outline" disabled={isSubmitting}>
                 Отмена
-              </Button>
+              </HapticButton>
             </DialogClose>
-            <Button
+            <HapticButton
               type="submit"
               // Блокируем кнопку, если нет пользователя ИЛИ форма не валидна/не изменена (опционально)
               disabled={isSubmitting || !currentUser || !isValid}
             >
               {isSubmitting ? 'Сохранение...' : 'Сохранить'}
-            </Button>
+            </HapticButton>
           </DialogFooter>
         </form>
       </DialogContent>

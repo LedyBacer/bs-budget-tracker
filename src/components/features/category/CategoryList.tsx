@@ -5,7 +5,7 @@ import { Category, Transaction } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { formatCurrency } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button'; // Добавили Button
+import { HapticButton } from '@/components/ui/haptic-button';
 import { Pencil, PlusCircle } from 'lucide-react'; // Иконки
 import { CategoryForm } from './CategoryForm'; // Импортируем форму
 import { Trash2 } from 'lucide-react'; // Добавить иконку
@@ -140,10 +140,10 @@ export function CategoryList() {
     <div className="mb-6">
       <div className="mb-3 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Категории бюджета:</h3>
-        <Button variant="ghost" size="sm" onClick={handleAddCategoryClick}>
+        <HapticButton variant="ghost" size="sm" onClick={handleAddCategoryClick}>
           <PlusCircle className="mr-1 h-4 w-4" />
           Добавить
-        </Button>
+        </HapticButton>
       </div>
 
       {/* Предупреждение о сумме лимитов */}
@@ -180,7 +180,7 @@ export function CategoryList() {
                       onOpenChange={(open) => !open && setCategoryToDelete(null)}
                     >
                       <AlertDialogTrigger asChild>
-                        <Button
+                        <HapticButton
                           variant="ghost"
                           size="sm"
                           className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
@@ -192,7 +192,7 @@ export function CategoryList() {
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Удалить
-                        </Button>
+                        </HapticButton>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -220,7 +220,7 @@ export function CategoryList() {
                       </AlertDialogContent>
                     </AlertDialog>
 
-                    <Button
+                    <HapticButton
                       variant="ghost"
                       size="sm"
                       className="flex-1 rounded-md border border-border"
@@ -232,7 +232,7 @@ export function CategoryList() {
                     >
                       <Pencil className="mr-2 h-4 w-4" />
                       Редактировать
-                    </Button>
+                    </HapticButton>
                   </div>
                 }
               >

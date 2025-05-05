@@ -5,7 +5,7 @@ import { Transaction, Category, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle } from 'lucide-react'; // Иконки для типов и редактирования
-import { Button } from '@/components/ui/button';
+import { HapticButton } from '@/components/ui/haptic-button';
 import { TransactionForm } from './TransactionForm';
 import { ExpandableItem } from '@/components/ui/expandable-item';
 
@@ -122,10 +122,10 @@ export function TransactionList() {
       <div className="mb-3 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Последние транзакции:</h3>
         {/* Проверяем обработчик кнопки */}
-        <Button variant="ghost" size="sm" onClick={handleAddTransaction} disabled={isLoading}>
+        <HapticButton variant="ghost" size="sm" onClick={handleAddTransaction} disabled={isLoading}>
           <PlusCircle className="mr-1 h-4 w-4" />
           Добавить
-        </Button>
+        </HapticButton>
       </div>
 
       {/* Список транзакций */}
@@ -145,7 +145,7 @@ export function TransactionList() {
               onToggle={() => handleToggleExpand(transaction.id)}
               actions={
                 <div className="flex w-full items-stretch">
-                  <Button
+                  <HapticButton
                     variant="ghost"
                     size="sm"
                     className="flex-1 rounded-md border border-border"
@@ -157,7 +157,7 @@ export function TransactionList() {
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     Редактировать
-                  </Button>
+                  </HapticButton>
                 </div>
               }
             >
@@ -197,9 +197,9 @@ export function TransactionList() {
           {/* Показываем кнопку "Показать все", если транзакций больше 5 */}
           {transactions.length > 5 && (
             <div className="mt-3 text-center">
-              <Button variant="link" size="sm">
+              <HapticButton variant="link" size="sm">
                 Показать все транзакции ({transactions.length})
-              </Button>
+              </HapticButton>
               {/* TODO: Реализовать переход на отдельную страницу/разворачивание списка */}
             </div>
           )}
