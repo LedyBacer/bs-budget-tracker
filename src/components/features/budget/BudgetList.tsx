@@ -1,7 +1,6 @@
 // src/components/features/budget/BudgetList.tsx
 import React, { useState } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { PlusCircle, Pencil, Trash2 } from 'lucide-react'; // Добавили иконки
 import { BudgetForm } from './BudgetForm';
@@ -19,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Budget } from '@/types'; // Импортируем тип Budget
 import { ExpandableItem } from '@/components/ui/expandable-item';
+import { HapticButton } from '@/components/ui/haptic-button';
 
 export function BudgetList() {
   const {
@@ -101,7 +101,7 @@ export function BudgetList() {
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Бюджеты:</h3>
-        <Button
+        <HapticButton 
           variant="ghost"
           size="sm"
           onClick={handleAddBudgetClick}
@@ -109,7 +109,7 @@ export function BudgetList() {
         >
           <PlusCircle className="mr-1 h-4 w-4" />
           Добавить
-        </Button>
+        </HapticButton>
       </div>
 
       {/* Индикаторы загрузки/ошибки/пустого списка */}
@@ -142,7 +142,7 @@ export function BudgetList() {
                       onOpenChange={(open) => !open && setBudgetToDelete(null)}
                     >
                       <AlertDialogTrigger asChild>
-                        <Button
+                        <HapticButton
                           variant="ghost"
                           size="sm"
                           className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
@@ -154,7 +154,7 @@ export function BudgetList() {
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Удалить
-                        </Button>
+                        </HapticButton>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -179,7 +179,7 @@ export function BudgetList() {
                       </AlertDialogContent>
                     </AlertDialog>
 
-                    <Button
+                    <HapticButton
                       variant="ghost"
                       size="sm"
                       className="flex-1 rounded-md border border-border"
@@ -191,11 +191,11 @@ export function BudgetList() {
                     >
                       <Pencil className="mr-2 h-4 w-4" />
                       Редактировать
-                    </Button>
+                    </HapticButton>
                   </div>
                 }
               >
-                <Button
+                <HapticButton
                   variant={currentBudget?.id === budget.id ? 'secondary' : 'ghost'}
                   onClick={() => {
                     selectBudget(budget.id);
@@ -206,7 +206,7 @@ export function BudgetList() {
                   )}
                 >
                   {budget.name}
-                </Button>
+                </HapticButton>
               </ExpandableItem>
             </React.Fragment>
           ))}
