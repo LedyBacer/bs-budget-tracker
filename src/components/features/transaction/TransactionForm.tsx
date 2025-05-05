@@ -62,6 +62,8 @@ export function TransactionForm({
   onOpenChange,
   onTransactionSaved,
 }: TransactionFormProps) {
+  console.log('TransactionForm rendered with props:', { budgetId, open, transactionToEdit });
+  
   const launchParams = useLaunchParams();
   // Пытаемся получить пользователя, но проверяем на undefined
   const currentUser =
@@ -132,8 +134,11 @@ export function TransactionForm({
         createdAt: transactionToEdit?.createdAt || new Date(),
       });
       setSubmitError(null); // Сброс ошибки
+      loadCategories();
+    } else {
+      // reset(); // Сбрасываем при закрытии - МОЖЕТ БЫТЬ ЛИШНИМ, если open меняется только на false при успешном сабмите/отмене
     }
-  }, [transactionToEdit, open, reset]);
+  }, [transactionToEdit, open, reset, loadCategories]);
 
   // --- Обработчик отправки формы ---
   const onSubmit: SubmitHandler<TransactionFormData> = async (data) => {

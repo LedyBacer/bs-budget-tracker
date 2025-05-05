@@ -1,10 +1,9 @@
 // src/components/features/transaction/TransactionList.tsx
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
-import { Transaction, Category } from '@/types';
+import { Transaction, Category, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle } from 'lucide-react'; // Иконки для типов и редактирования
 import { Button } from '@/components/ui/button';
 import { TransactionForm } from './TransactionForm';
@@ -19,9 +18,18 @@ export function TransactionList() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false); // Состояние диалога формы
-  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null); // Для редактирования
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   // TODO: Обработка ошибок
+
+  // --- ЛОГ МОНТИРОВАНИЯ/РАЗМОНТИРОВАНИЯ ---
+  useEffect(() => {
+    console.log(`TransactionList MOUNTED for budget: ${currentBudget?.id}`);
+    return () => {
+      console.log(`TransactionList UNMOUNTED for budget: ${currentBudget?.id}`);
+    };
+  }, [currentBudget]); // Зависимость от currentBudget покажет пересоздание при его смене
+  // --- КОНЕЦ ЛОГА ---
 
   // useCallback для загрузки данных
   const loadData = useCallback(async () => {
@@ -43,29 +51,46 @@ export function TransactionList() {
   }, [currentBudget]);
 
   useEffect(() => {
+    console.log('TransactionList: Effect running, currentBudget:', currentBudget?.id);
     loadData();
-  }, [loadData]); // Зависимость от loadData (-> currentBudget)
+  }, [currentBudget?.id, loadData]);
 
   // Открытие формы добавления
   const handleAddTransaction = () => {
+    console.log('TransactionList: handleAddTransaction called'); // <-- ЛОГ 1
     setTransactionToEdit(null);
-    setIsFormOpen(true);
+    setIsFormOpen(true); // <-- Установка состояния
+    console.log('TransactionList: isFormOpen should be true now'); // <-- ЛОГ 2
   };
 
   // Открытие формы редактирования (передаем транзакцию)
   const handleEditTransaction = (transaction: Transaction) => {
+    console.log('TransactionList: handleEditTransaction called for', transaction.id);
     setTransactionToEdit(transaction);
     setIsFormOpen(true);
   };
 
-  // Колбэк после сохранения - перезагружаем данные
+  // Колбэк после сохранения
   const handleTransactionSaved = () => {
+    console.log('TransactionList: handleTransactionSaved called');
     loadData(); // loadData теперь перезагружает и транзакции, и категории
-    // TODO: Идеально было бы обновить состояние BudgetDetails тоже.
-    // Можно попробовать обновить BudgetContext, если вынести
-    // загрузку транзакций для расчета баланса туда.
-    // Пока оставим так, CategoryList обновится. BudgetDetails - нет.
+    // Явно перезагрузим категории для формы на всякий случай
+    // (Это может быть избыточно, если loadData уже это делает надежно)
+    if (currentBudget) {
+      mockApi.getCategoriesByBudgetId(currentBudget.id).then((cats) => {
+        // Как передать эти cats в TransactionForm? Никак напрямую.
+        // Это подтверждает, что форма ДОЛЖНА сама грузить актуальные категории при открытии.
+        console.log('Categories reloaded after save (for debug):', cats.length);
+      });
+    }
   };
+
+  console.log(
+    'TransactionList: Rendering. isFormOpen:',
+    isFormOpen,
+    'currentBudget:',
+    currentBudget?.id
+  ); // Лог 3
 
   // Добавляем имена категорий к транзакциям для удобного отображения
   const transactionsWithDetails: TransactionWithCategoryName[] = useMemo(() => {
@@ -89,13 +114,17 @@ export function TransactionList() {
     <div className="mb-6">
       <div className="mb-3 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Последние транзакции:</h3>
-        <Button variant="ghost" size="sm" onClick={handleAddTransaction}>
+        {/* Проверяем обработчик кнопки */}
+        <Button variant="ghost" size="sm" onClick={handleAddTransaction} disabled={isLoading}>
           <PlusCircle className="mr-1 h-4 w-4" />
           Добавить
         </Button>
       </div>
 
-      {transactionsWithDetails.length === 0 ? (
+      {/* Список транзакций */}
+      {isLoading && transactions.length === 0 ? (
+        <div className="text-muted-foreground p-4 text-center">Загрузка транзакций...</div>
+      ) : transactionsWithDetails.length === 0 ? (
         <div className="text-muted-foreground bg-card rounded-lg border p-4 text-center">
           Транзакций по этому бюджету еще нет.
         </div>
@@ -139,7 +168,7 @@ export function TransactionList() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="h-6 w-6 opacity-50 hover:opacity-100"
                   onClick={() => handleEditTransaction(transaction)}
                   aria-label="Редактировать транзакцию"
                 >
@@ -157,17 +186,18 @@ export function TransactionList() {
               {/* TODO: Реализовать переход на отдельную страницу/разворачивание списка */}
             </div>
           )}
-          {/* Диалоговое окно формы транзакции */}
-          {currentBudget && (
-            <TransactionForm
-              budgetId={currentBudget.id}
-              transactionToEdit={transactionToEdit}
-              open={isFormOpen}
-              onOpenChange={setIsFormOpen}
-              onTransactionSaved={handleTransactionSaved}
-            />
-          )}
         </div>
+      )}
+
+      {/* Диалоговое окно формы транзакции - теперь всегда доступно */}
+      {currentBudget && (
+        <TransactionForm
+          budgetId={currentBudget.id}
+          transactionToEdit={transactionToEdit}
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          onTransactionSaved={handleTransactionSaved}
+        />
       )}
     </div>
   );
