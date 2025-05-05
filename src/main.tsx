@@ -20,7 +20,31 @@ try {
 
   // 2. Синхронное монтирование критичных компонентов
   // ThemeParams нужен для цветов и MainButton
-  themeParams.mountSync();
+  if (themeParams.mountSync.isAvailable()) {
+    themeParams.mountSync();
+    console.log('ThemeParams mounted:', {
+      isMounted: themeParams.isMounted(),
+      state: themeParams.state(),
+      backgroundColor: themeParams.backgroundColor(),
+      textColor: themeParams.textColor(),
+      buttonColor: themeParams.buttonColor(),
+      buttonTextColor: themeParams.buttonTextColor(),
+      secondaryBackgroundColor: themeParams.secondaryBackgroundColor(),
+      hintColor: themeParams.hintColor(),
+      linkColor: themeParams.linkColor(),
+      destructiveTextColor: themeParams.destructiveTextColor(),
+      accentTextColor: themeParams.accentTextColor(),
+    });
+
+    // Привязываем CSS переменные после монтирования
+    if (themeParams.bindCssVars.isAvailable()) {
+      themeParams.bindCssVars();
+      console.log('CSS variables bound:', themeParams.isCssVarsBound());
+    }
+  } else {
+    console.warn('ThemeParams mountSync is not available');
+  }
+  
   // MiniApp нужен для ready(), цветов фона/шапки
   miniApp.mountSync();
   // Кнопки, если используются глобально или с самого начала
@@ -38,19 +62,6 @@ try {
   // Опционально: Асинхронное монтирование других компонентов, если нужно сразу
   // if (viewport.mount.isAvailable()) {
   //   viewport.mount().catch(console.error); // Запустить и обработать ошибку, если будет
-  // }
-
-  // 3. Привязка CSS переменных (после монтирования ThemeParams и MiniApp)
-  // Важно для shadcn/ui тем и общего стиля
-  if (themeParams.bindCssVars.isAvailable()) {
-    themeParams.bindCssVars();
-  }
-  if (miniApp.bindCssVars.isAvailable()) {
-    miniApp.bindCssVars();
-  }
-  // if (viewport.bindCssVars.isAvailable()) {
-  //  // Вызывать после монтирования viewport, если CSS переменные для него нужны
-  //  viewport.bindCssVars();
   // }
 
   // 4. Монтирование React приложения

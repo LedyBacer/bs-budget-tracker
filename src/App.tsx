@@ -6,6 +6,7 @@ import {
   miniApp,
   backButton,
   mainButton,
+  themeParams,
 } from '@telegram-apps/sdk-react';
 import { WebAppUser } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -157,6 +158,46 @@ function AppContent() {
                   <span className="font-medium text-red-600">❌ Not Loaded (Check code!)</span>
                 </p>
               )}
+            </div>
+
+            <div className="mt-3 space-y-1">
+              <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">
+                Theme Data:
+              </h4>
+              <p>
+                ThemeParams Mounted:{' '}
+                <span className={themeParams.isMounted() ? 'text-green-600' : 'text-red-600'}>
+                  {themeParams.isMounted() ? '✅ Yes' : '❌ No'}
+                </span>
+              </p>
+              <p>
+                CSS Vars Bound:{' '}
+                <span className={themeParams.isCssVarsBound() ? 'text-green-600' : 'text-red-600'}>
+                  {themeParams.isCssVarsBound() ? '✅ Yes' : '❌ No'}
+                </span>
+              </p>
+              <details className="text-xs">
+                <summary className="text-muted-foreground cursor-pointer">
+                  Raw Theme Colors
+                </summary>
+                <pre className="bg-muted mt-1 max-h-40 overflow-auto rounded p-1 text-[10px] leading-tight">
+                  {JSON.stringify(
+                    {
+                      backgroundColor: themeParams.backgroundColor(),
+                      textColor: themeParams.textColor(),
+                      buttonColor: themeParams.buttonColor(),
+                      buttonTextColor: themeParams.buttonTextColor(),
+                      secondaryBackgroundColor: themeParams.secondaryBackgroundColor(),
+                      hintColor: themeParams.hintColor(),
+                      linkColor: themeParams.linkColor(),
+                      destructiveTextColor: themeParams.destructiveTextColor(),
+                      accentTextColor: themeParams.accentTextColor(),
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+              </details>
             </div>
 
             <div className="mt-3">
