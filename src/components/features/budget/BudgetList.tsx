@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Budget } from '@/types'; // Импортируем тип Budget
+import { ExpandableItem } from '@/components/ui/expandable-item';
 
 export function BudgetList() {
   const {
@@ -32,7 +33,7 @@ export function BudgetList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [budgetToEdit, setBudgetToEdit] = useState<Budget | null>(null);
   const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
-  const [activeBudgetId, setActiveBudgetId] = useState<string | null>(null); // Добавляем состояние для активного элемента
+  const [expandedBudgetId, setExpandedBudgetId] = useState<string | null>(null);
 
   // Колбэк после сохранения бюджета (просто перезагружаем список)
   const handleBudgetSaved = () => {
@@ -72,6 +73,11 @@ export function BudgetList() {
     } finally {
       setBudgetToDelete(null);
     }
+  };
+
+  // Функция для переключения раскрытого элемента
+  const handleToggleExpand = (budgetId: string) => {
+    setExpandedBudgetId((prevId) => (prevId === budgetId ? null : budgetId));
   };
 
   if (isLoadingBudgets) {
@@ -125,56 +131,84 @@ export function BudgetList() {
       {allBudgets.length > 0 && !isLoadingBudgets && (
         <div className="flex flex-col space-y-1">
           {allBudgets.map((budget) => (
-            <div key={budget.id} className="group relative flex">
-              <Button
-                variant={currentBudget?.id === budget.id ? 'secondary' : 'ghost'}
-                onClick={() => {
-                  selectBudget(budget.id);
-                  setActiveBudgetId(activeBudgetId === budget.id ? null : budget.id);
-                }}
-                className={cn(
-                  'h-auto w-full justify-start py-2 pr-16 pl-3 text-left',
-                  currentBudget?.id === budget.id && 'font-semibold'
-                )}
-              >
-                {budget.name}
-              </Button>
-              <div className={cn(
-                "absolute top-0 right-1 bottom-0 flex items-center",
-                "opacity-0 transition-opacity",
-                "group-hover:opacity-100",
-                activeBudgetId === budget.id && "opacity-100"
-              )}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => handleEditBudgetClick(budget, e)}
-                  aria-label="Редактировать бюджет"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+            <React.Fragment key={budget.id}>
+              <ExpandableItem
+                isExpanded={expandedBudgetId === budget.id}
+                onToggle={() => handleToggleExpand(budget.id)}
+                actions={
+                  <div className="flex w-full items-stretch gap-1">
+                    <AlertDialog
+                      open={budgetToDelete?.id === budget.id}
+                      onOpenChange={(open) => !open && setBudgetToDelete(null)}
+                    >
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTriggerClick(budget, e);
+                          }}
+                          aria-label="Удалить бюджет"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Удалить
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Удалить бюджет?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Вы уверены, что хотите удалить бюджет "{budget.name}"? Все связанные с ним
+                            категории и транзакции также будут удалены. Это действие нельзя будет отменить.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setBudgetToDelete(null); }}>Отмена</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await handleConfirmDelete();
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Удалить
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
 
-                {/* Обертка для AlertDialog Trigger */}
-                <AlertDialog
-                  open={budgetToDelete?.id === budget.id}
-                  onOpenChange={(open) => !open && setBudgetToDelete(null)}
-                >
-                  <AlertDialogTrigger asChild>
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive h-7 w-7"
-                      onClick={(e) => handleDeleteTriggerClick(budget, e)}
-                      aria-label="Удалить бюджет"
+                      size="sm"
+                      className="flex-1 rounded-md border border-border"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditBudgetClick(budget, e);
+                      }}
+                      aria-label="Редактировать бюджет"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Редактировать
                     </Button>
-                  </AlertDialogTrigger>
-                  {/* Диалог подтверждения удаления вынесен ниже */}
-                </AlertDialog>
-              </div>
-            </div>
+                  </div>
+                }
+              >
+                <Button
+                  variant={currentBudget?.id === budget.id ? 'secondary' : 'ghost'}
+                  onClick={() => {
+                    selectBudget(budget.id);
+                  }}
+                  className={cn(
+                    'h-auto w-full justify-start py-2 pr-16 pl-3 text-left',
+                    currentBudget?.id === budget.id && 'font-semibold'
+                  )}
+                >
+                  {budget.name}
+                </Button>
+              </ExpandableItem>
+            </React.Fragment>
           ))}
         </div>
       )}
@@ -186,33 +220,6 @@ export function BudgetList() {
         onOpenChange={setIsFormOpen}
         onBudgetSaved={handleBudgetSaved}
       />
-
-      {/* Диалог подтверждения удаления (один на все кнопки) */}
-      {budgetToDelete && (
-        <AlertDialog
-          open={!!budgetToDelete}
-          onOpenChange={(open) => !open && setBudgetToDelete(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Удалить бюджет?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Вы уверены, что хотите удалить бюджет "{budgetToDelete.name}"? Все связанные с ним
-                категории и транзакции также будут удалены. Это действие нельзя будет отменить.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setBudgetToDelete(null)}>Отмена</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmDelete}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Удалить
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
     </div>
   );
 }

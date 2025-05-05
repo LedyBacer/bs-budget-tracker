@@ -21,6 +21,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { ExpandableItem } from '@/components/ui/expandable-item';
+import React from 'react';
 
 interface CategoryWithBalance extends Category {
   spent: number;
@@ -36,7 +38,7 @@ export function CategoryList() {
   const [isFormOpen, setIsFormOpen] = useState(false); // Состояние для диалога
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null); // Для редактирования
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null); // Добавляем состояние для активного элемента
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null); // Добавили
 
   const loadData = useCallback(async () => {
     if (!currentBudget) return;
@@ -122,6 +124,11 @@ export function CategoryList() {
     return categories.reduce((sum, cat) => sum + cat.limit, 0);
   }, [categories]);
 
+  // Функция для переключения раскрытого элемента
+  const handleToggleExpand = (categoryId: string) => {
+    setExpandedCategoryId((prevId) => (prevId === categoryId ? null : categoryId));
+  };
+
   if (!currentBudget) return null;
 
   if (isLoading && categories.length === 0) {
@@ -160,93 +167,96 @@ export function CategoryList() {
       ) : isLoading && categoriesWithBalance.length === 0 ? (
         <div className="text-muted-foreground p-4 text-center">Загрузка...</div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {categoriesWithBalance.map((category) => (
-            <div
-              key={category.id}
-              className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm"
-              onClick={() => setActiveCategoryId(activeCategoryId === category.id ? null : category.id)}
-            >
-              <AlertDialog
-                open={!!categoryToDelete && categoryToDelete.id === category.id}
-                onOpenChange={(open) => !open && setCategoryToDelete(null)}
-              >
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "text-destructive hover:text-destructive absolute top-1 right-8 h-6 w-6",
-                      "opacity-0 transition-opacity group-hover:opacity-100",
-                      activeCategoryId === category.id && "opacity-100"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCategoryToDelete(category);
-                    }}
-                    aria-label="Удалить категорию"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Вы уверены, что хотите удалить категорию "{categoryToDelete?.name}"? Это
-                      действие нельзя будет отменить. Категорию можно удалить, только если по ней
-                      нет транзакций.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>
-                      Отмена
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteCategory}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <React.Fragment key={category.id}>
+              <ExpandableItem
+                isExpanded={expandedCategoryId === category.id}
+                onToggle={() => handleToggleExpand(category.id)}
+                actions={
+                  <div className="flex w-full items-stretch gap-1">
+                    <AlertDialog
+                      open={!!categoryToDelete && categoryToDelete.id === category.id}
+                      onOpenChange={(open) => !open && setCategoryToDelete(null)}
                     >
-                      Удалить
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCategoryToDelete(category);
+                          }}
+                          aria-label="Удалить категорию"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Удалить
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Вы уверены, что хотите удалить категорию "{category.name}"? Это
+                            действие нельзя будет отменить. Категорию можно удалить, только если по ней
+                            нет транзакций.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}>
+                            Отмена
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await handleDeleteCategory();
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Удалить
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "absolute top-1 right-1 h-6 w-6",
-                  "opacity-0 transition-opacity group-hover:opacity-100",
-                  activeCategoryId === category.id && "opacity-100"
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditCategoryClick(category);
-                }}
-                aria-label="Редактировать категорию"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 rounded-md border border-border"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditCategoryClick(category);
+                      }}
+                      aria-label="Редактировать категорию"
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Редактировать
+                    </Button>
+                  </div>
+                }
               >
-                <Pencil className="h-3 w-3" />
-              </Button>
-
-              <div className="mb-1 flex items-center justify-between pr-8">
-                {' '}
-                {/* Добавили отступ справа */}
-                <span className="font-medium">{category.name}</span>
-                <span className="text-muted-foreground text-xs">
-                  Лимит: {formatCurrency(category.limit)}
-                </span>
-              </div>
-              <Progress value={category.progress} className="mb-1 h-2" />
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">
-                  Расход: {formatCurrency(category.spent)}
-                </span>
-                <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
-                  Остаток: {formatCurrency(category.balance)}
-                </span>
-              </div>
-            </div>
+                <div
+                  className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm"
+                >
+                  <div className="mb-1 flex items-center justify-between pr-8">
+                    <span className="font-medium">{category.name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      Лимит: {formatCurrency(category.limit)}
+                    </span>
+                  </div>
+                  <Progress value={category.progress} className="mb-1 h-2" />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      Расход: {formatCurrency(category.spent)}
+                    </span>
+                    <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
+                      Остаток: {formatCurrency(category.balance)}
+                    </span>
+                  </div>
+                </div>
+              </ExpandableItem>
+            </React.Fragment>
           ))}
         </div>
       )}
