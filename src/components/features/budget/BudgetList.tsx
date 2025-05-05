@@ -1,7 +1,7 @@
 // src/components/features/budget/BudgetList.tsx
 import React, { useState } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
-import { HapticButton } from '@/components/ui/haptic-button';
+// import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { PlusCircle, Pencil, Trash2 } from 'lucide-react'; // Добавили иконки
 import { BudgetForm } from './BudgetForm';
@@ -89,7 +89,7 @@ export function BudgetList() {
   if (errorLoadingBudgets) {
     return (
       <div className="text-destructive p-4 text-center">
-        Ошибка загрузки бюджетов: {(errorLoadingBudgets as any)?.message}
+        Ошибка загрузки бюджетов: {errorLoadingBudgets.message}
       </div>
     );
   }
@@ -102,7 +102,7 @@ export function BudgetList() {
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Бюджеты:</h3>
-        <HapticButton
+        <HapticButton 
           variant="ghost"
           size="sm"
           onClick={handleAddBudgetClick}
@@ -119,7 +119,7 @@ export function BudgetList() {
       )}
       {errorLoadingBudgets && !isLoadingBudgets && (
         <div className="text-destructive p-4 text-center">
-          Ошибка загрузки бюджетов: {(errorLoadingBudgets as any)?.message}
+          Ошибка загрузки бюджетов: {errorLoadingBudgets.message}
         </div>
       )}
       {allBudgets.length === 0 && !isLoadingBudgets && !errorLoadingBudgets && (
@@ -132,56 +132,84 @@ export function BudgetList() {
       {allBudgets.length > 0 && !isLoadingBudgets && (
         <div className="flex flex-col space-y-1">
           {allBudgets.map((budget) => (
-            <div key={budget.id} className="group relative flex">
-              <HapticButton
-                variant={currentBudget?.id === budget.id ? 'secondary' : 'ghost'}
-                onClick={() => {
-                  selectBudget(budget.id);
-                  setActiveBudgetId(activeBudgetId === budget.id ? null : budget.id);
-                }}
-                className={cn(
-                  'h-auto w-full justify-start py-2 pr-16 pl-3 text-left',
-                  currentBudget?.id === budget.id && 'font-semibold'
-                )}
-              >
-                {budget.name}
-              </HapticButton>
-              <div className={cn(
-                "absolute top-0 right-1 bottom-0 flex items-center",
-                "opacity-0 transition-opacity",
-                "group-hover:opacity-100",
-                activeBudgetId === budget.id && "opacity-100"
-              )}>
-                <HapticButton
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => handleEditBudgetClick(budget, e)}
-                  aria-label="Редактировать бюджет"
-                >
-                  <Pencil className="h-4 w-4" />
-                </HapticButton>
+            <React.Fragment key={budget.id}>
+              <ExpandableItem
+                isExpanded={expandedBudgetId === budget.id}
+                onToggle={() => handleToggleExpand(budget.id)}
+                actions={
+                  <div className="flex w-full items-stretch gap-1">
+                    <AlertDialog
+                      open={budgetToDelete?.id === budget.id}
+                      onOpenChange={(open) => !open && setBudgetToDelete(null)}
+                    >
+                      <AlertDialogTrigger asChild>
+                        <HapticButton
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTriggerClick(budget, e);
+                          }}
+                          aria-label="Удалить бюджет"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Удалить
+                        </HapticButton>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Удалить бюджет?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Вы уверены, что хотите удалить бюджет "{budget.name}"? Все связанные с ним
+                            категории и транзакции также будут удалены. Это действие нельзя будет отменить.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setBudgetToDelete(null); }}>Отмена</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await handleConfirmDelete();
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Удалить
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
 
-                {/* Обертка для AlertDialog Trigger */}
-                <AlertDialog
-                  open={budgetToDelete?.id === budget.id}
-                  onOpenChange={(open) => !open && setBudgetToDelete(null)}
-                >
-                  <AlertDialogTrigger asChild>
                     <HapticButton
                       variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive h-7 w-7"
-                      onClick={(e) => handleDeleteTriggerClick(budget, e)}
-                      aria-label="Удалить бюджет"
+                      size="sm"
+                      className="flex-1 rounded-md border border-border"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditBudgetClick(budget, e);
+                      }}
+                      aria-label="Редактировать бюджет"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Редактировать
                     </HapticButton>
-                  </AlertDialogTrigger>
-                  {/* Диалог подтверждения удаления вынесен ниже */}
-                </AlertDialog>
-              </div>
-            </div>
+                  </div>
+                }
+              >
+                <HapticButton
+                  variant={currentBudget?.id === budget.id ? 'secondary' : 'ghost'}
+                  onClick={() => {
+                    selectBudget(budget.id);
+                  }}
+                  className={cn(
+                    'h-auto w-full justify-start py-2 pr-16 pl-3 text-left',
+                    currentBudget?.id === budget.id && 'font-semibold'
+                  )}
+                >
+                  {budget.name}
+                </HapticButton>
+              </ExpandableItem>
+            </React.Fragment>
           ))}
         </div>
       )}
@@ -193,38 +221,6 @@ export function BudgetList() {
         onOpenChange={setIsFormOpen}
         onBudgetSaved={handleBudgetSaved}
       />
-
-      {/* Диалог подтверждения удаления (один на все кнопки) */}
-      {budgetToDelete && (
-        <AlertDialog
-          open={!!budgetToDelete}
-          onOpenChange={(open) => !open && setBudgetToDelete(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Удалить бюджет?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Вы уверены, что хотите удалить бюджет "{budgetToDelete.name}"? Все связанные с ним
-                категории и транзакции также будут удалены. Это действие нельзя будет отменить.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel asChild>
-                <HapticButton onClick={() => setBudgetToDelete(null)} impactStyle="soft">Отмена</HapticButton>
-              </AlertDialogCancel>
-              <AlertDialogAction asChild>
-                <HapticButton
-                  onClick={handleConfirmDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  impactStyle="heavy"
-                >
-                  Удалить
-                </HapticButton>
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
     </div>
   );
 }
