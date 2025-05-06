@@ -109,6 +109,10 @@ const generateTestTransactions = (): Transaction[] => {
   return transactions;
 };
 
+// Имитация задержки сети с случайным временем для реалистичности
+const fakeNetworkDelay = (minDelay = 300, maxDelay = 800) => 
+  new Promise((res) => setTimeout(res, Math.random() * (maxDelay - minDelay) + minDelay));
+
 let budgets: Budget[] = [
   {
     id: 'b1',
@@ -143,12 +147,68 @@ let categories: Category[] = [
   { id: 'c10', budgetId: 'b2', name: 'Рестораны', limit: 25000, spent: 0, income: 0, balance: 25000 },
 ];
 
-// Инициализация транзакций с тестовыми данными
-let transactions: Transaction[] = generateTestTransactions();
+let transactions: Transaction[] = [];
 
-// Имитация задержки сети с случайным временем для реалистичности
-const fakeNetworkDelay = (minDelay = 300, maxDelay = 800) => 
-  new Promise((res) => setTimeout(res, Math.random() * (maxDelay - minDelay) + minDelay));
+// Функция для пересчета значений бюджета
+const recalculateBudgetValues = (budgetId: string) => {
+  const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
+  
+  // Считаем общий расход и доход
+  const totalExpense = budgetTransactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const totalIncome = budgetTransactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Обновляем бюджет
+  const budgetIndex = budgets.findIndex(b => b.id === budgetId);
+  if (budgetIndex !== -1) {
+    budgets[budgetIndex] = {
+      ...budgets[budgetIndex],
+      totalExpense,
+      totalIncome,
+      balance: budgets[budgetIndex].totalAmount - totalExpense + totalIncome
+    };
+  }
+};
+
+// Функция для пересчета значений категорий
+const recalculateCategoryValues = (budgetId: string) => {
+  const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
+  
+  // Обновляем значения для каждой категории
+  categories = categories.map(category => {
+    if (category.budgetId !== budgetId) return category;
+
+    const categoryTransactions = budgetTransactions.filter(t => t.categoryId === category.id);
+    
+    const spent = categoryTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const income = categoryTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+      ...category,
+      spent,
+      income,
+      balance: category.limit - spent + income
+    };
+  });
+};
+
+// Инициализация транзакций с тестовыми данными
+transactions = generateTestTransactions();
+
+// Пересчитываем значения для каждого бюджета после инициализации
+budgets.forEach(budget => {
+  recalculateBudgetValues(budget.id);
+  recalculateCategoryValues(budget.id);
+});
 
 // --- Функции для имитации API ---
 
@@ -172,7 +232,7 @@ export const addBudget = async (name: string, totalAmount: number): Promise<Budg
     createdAt: new Date(),
     totalExpense: 0,
     totalIncome: 0,
-    balance: 0
+    balance: totalAmount
   };
   budgets.push(newBudget);
   return { ...newBudget }; // Возвращаем копию
@@ -414,58 +474,6 @@ export const getTransactionsByBudgetId = async (
   return filteredTransactions
     .slice(startIndex, endIndex)
     .map((t) => ({ ...t })); // Возвращаем копии
-};
-
-// Функция для пересчета значений бюджета
-const recalculateBudgetValues = (budgetId: string) => {
-  const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
-  
-  // Считаем общий расход и доход
-  const totalExpense = budgetTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const totalIncome = budgetTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // Обновляем бюджет
-  const budgetIndex = budgets.findIndex(b => b.id === budgetId);
-  if (budgetIndex !== -1) {
-    budgets[budgetIndex] = {
-      ...budgets[budgetIndex],
-      totalExpense,
-      totalIncome,
-      balance: totalIncome - totalExpense
-    };
-  }
-};
-
-// Функция для пересчета значений категорий
-const recalculateCategoryValues = (budgetId: string) => {
-  const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
-  
-  // Обновляем значения для каждой категории
-  categories = categories.map(category => {
-    if (category.budgetId !== budgetId) return category;
-
-    const categoryTransactions = budgetTransactions.filter(t => t.categoryId === category.id);
-    
-    const spent = categoryTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-    
-    const income = categoryTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    return {
-      ...category,
-      spent,
-      income,
-      balance: category.limit - spent + income
-    };
-  });
 };
 
 // Обновляем функцию addTransaction

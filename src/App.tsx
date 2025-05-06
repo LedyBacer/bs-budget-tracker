@@ -131,32 +131,19 @@ function AppContent() {
         )}
 
         {/* --- Отладочный блок SDK --- */}
-        <div className="mt-auto pt-6">
-          {/* Добавим отступ сверху */}
+        {/* <div className="mt-auto pt-6">
           <details className="bg-card text-card-foreground rounded-lg border p-4 text-sm">
             <summary className="mb-2 cursor-pointer font-semibold">SDK Status & Debug Info</summary>
-
-            {/* <div className="mt-2 space-y-1">
-              <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">Buttons:</h4>
-              <p>Back Button Visible: {useSignal(backButton.isVisible) ? '✅ Yes' : '❌ No'}</p>
-              <p>Main Button Visible: {useSignal(mainButton.isVisible) ? '✅ Yes' : '❌ No'}</p>
-              <p>Main Button Text: "{useSignal(mainButton.text)}"</p>
-              <p>
-                Main Button Loading: {useSignal(mainButton.isLoaderVisible) ? '⏳ Yes' : '✅ No'}
-              </p>
-            </div> */}
 
             <div className="mt-3 space-y-1">
               <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">
                 User Data (from tgWebAppData):
               </h4>
-              {/* Проверяем исправленный currentUser */}
               {currentUser ? (
                 <>
                   <p>
                     Status: <span className="font-medium text-green-600">✅ Loaded</span>
                   </p>
-                  {/* Используем поля как есть, т.к. они уже в camelCase в v3 */}
                   <p>
                     ID: <span className="font-mono text-xs">{currentUser.id}</span>
                   </p>
@@ -225,8 +212,9 @@ function AppContent() {
               </details>
             </div>
           </details>
-        </div>
+        </div> */}
         {/* --- Конец отладочного блока --- */}
+        
       </PageWrapper>
       <Footer />
     </div>
