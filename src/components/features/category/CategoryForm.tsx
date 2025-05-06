@@ -151,6 +151,7 @@ export function CategoryForm({
                   id="limit"
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   {...register('limit')}
                   className={errors.limit ? 'border-destructive' : ''}
                   disabled={isSubmitting}

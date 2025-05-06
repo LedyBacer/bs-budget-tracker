@@ -153,6 +153,7 @@ export function BudgetForm({
                   id="totalAmount"
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   placeholder="Например, 100000"
                   {...register('totalAmount')}
                   className={errors.totalAmount ? 'border-destructive' : ''}

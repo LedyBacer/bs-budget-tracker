@@ -249,6 +249,7 @@ export function SimpleTransactionForm({
                   id="amount"
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   placeholder="Например, 1500.50"
                   {...register('amount')}
                   className={errors.amount ? 'border-destructive' : ''}
