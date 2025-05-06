@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   useLaunchParams,
   useSignal,
@@ -27,10 +27,13 @@ import {
 } from '@/components/ui/skeletons';
 import { HapticButton } from '@/components/ui/haptic-button';
 import { PlusCircle } from 'lucide-react';
+import { SimpleTransactionForm } from '@/components/features/transaction/SimpleTransactionForm';
 
 function AppContent() {
   const { currentBudget, isLoadingBudgets, errorLoadingBudgets } = useBudgets();
   const launchParams = useLaunchParams();
+  const [isSimpleFormOpen, setIsSimpleFormOpen] = useState(false);
+  const transactionListRef = useRef<{ loadData: () => Promise<void> } | null>(null);
   const currentUser =
     launchParams.tgWebAppData &&
     typeof launchParams.tgWebAppData === 'object' &&
@@ -92,21 +95,26 @@ function AppContent() {
               variant="default"
               size="lg"
               className="mb-6 w-full"
-              onClick={() => {
-                const transactionList = document.querySelector('[data-transaction-list]');
-                if (transactionList) {
-                  const addButton = transactionList.querySelector('button');
-                  if (addButton) {
-                    addButton.click();
-                  }
-                }
-              }}
+              onClick={() => setIsSimpleFormOpen(true)}
             >
               <PlusCircle className="mr-2 h-5 w-5" />
               Добавить транзакцию
             </HapticButton>
             <CategoryList />
-            <TransactionList />
+            <TransactionList ref={transactionListRef} />
+            {currentBudget && (
+              <SimpleTransactionForm
+                budgetId={currentBudget.id}
+                open={isSimpleFormOpen}
+                onOpenChange={setIsSimpleFormOpen}
+                onTransactionSaved={() => {
+                  // Обновляем список транзакций через ref
+                  if (transactionListRef.current) {
+                    transactionListRef.current.loadData();
+                  }
+                }}
+              />
+            )}
           </>
         ) : (
           !isLoadingBudgets && (

@@ -1,5 +1,5 @@
 // src/components/features/transaction/TransactionList.tsx
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
 import { Transaction, Category, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
@@ -26,7 +26,11 @@ interface TransactionWithCategoryName extends Transaction {
   categoryName?: string;
 }
 
-export function TransactionList() {
+export interface TransactionListRef {
+  loadData: () => Promise<void>;
+}
+
+export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
   const { currentBudget } = useBudgets();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -65,6 +69,11 @@ export function TransactionList() {
       setIsLoading(false);
     }
   }, [currentBudget]);
+
+  // Экспортируем loadData через ref
+  useImperativeHandle(ref, () => ({
+    loadData,
+  }));
 
   useEffect(() => {
     console.log('TransactionList: Effect running, currentBudget:', currentBudget?.id);
@@ -294,4 +303,4 @@ export function TransactionList() {
       )}
     </div>
   );
-}
+});
