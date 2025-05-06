@@ -17,7 +17,7 @@ import { PageWrapper } from '@/components/layout/PageWrapper';
 import { BudgetProvider, useBudgets } from '@/contexts/BudgetContext';
 import { BudgetList } from '@/components/features/budget/BudgetList';
 import { BudgetDetails } from '@/components/features/budget/BudgetDetails';
-import { CategoryList } from '@/components/features/category/CategoryList';
+import { CategoryList } from '@/components/features/category';
 import { TransactionList } from '@/components/features/transaction/TransactionList';
 import {
   BudgetListSkeleton,
