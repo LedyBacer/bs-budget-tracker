@@ -61,9 +61,7 @@ export function BudgetDetails() {
           <span className="text-muted-foreground">Текущий остаток:</span>
           {isLoadingTransactions ? (
             <div className="flex items-center space-x-1">
-              <Skeleton className="h-6 w-16" />
-              <Skeleton className="h-6 w-16" />
-              <Skeleton className="h-6 w-8" />
+              <Skeleton className="h-7 w-21" />
             </div>
           ) : (
             <span className="text-lg font-bold">{formatCurrency(budgetBalance)}</span>

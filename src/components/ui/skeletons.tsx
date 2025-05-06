@@ -18,7 +18,7 @@ export { Skeleton };
 
 export function BudgetListSkeleton() {
   return (
-    <div className="mb-6">
+    <div className="mb-8">
       <div className="mb-2 flex items-center justify-between px-1">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-8 w-24" />
@@ -54,15 +54,15 @@ export function BudgetDetailsSkeleton() {
   return (
     <div className="bg-card text-card-foreground mb-6 rounded-lg border p-4">
       <div className="mb-3">
-        <Skeleton className="h-6 w-48" />
-        <div className="mt-1 flex items-center space-x-2">
+        <Skeleton className="mt-1 h-6 w-48" />
+        {/* <div className="mt-1 flex items-center space-x-2">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-4 w-4" />
           <Skeleton className="h-4 w-32" />
-        </div>
+        </div> */}
       </div>
       <div className="space-y-1 text-sm">
-        <div className="flex justify-between">
+        <div className="flex space-y-2 justify-between">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-4 w-32" />
         </div>
