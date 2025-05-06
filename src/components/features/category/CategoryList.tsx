@@ -134,7 +134,7 @@ export function CategoryList() {
       const categoryTransactions = transactions.filter((t) => t.categoryId === category.id);
       // Прогресс считаем только от расходов относительно лимита
       const progress =
-        category.limit > 0 ? Math.min(100, Math.max(0, (category.spent / category.limit) * 100)) : 0;
+        category.limit > 0 ? Math.min(100, Math.max(0, (category.balance / category.limit) * 100)) : 0;
 
       return {
         ...category,
@@ -278,13 +278,40 @@ export function CategoryList() {
                       </span>
                     </div>
                     <Progress value={category.progress} className="mb-1 h-2" />
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        Баланс:
-                      </span>
-                      <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
-                        {formatCurrency(category.balance)}
-                      </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Баланс:
+                        </span>
+                        <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
+                          {formatCurrency(category.balance)}
+                        </span>
+                      </div>
+                      <div className={cn(
+                        "grid grid-rows-[0fr] transition-all duration-300 ease-in-out",
+                        expandedCategoryId === category.id && "grid-rows-[1fr]"
+                      )}>
+                        <div className="overflow-hidden">
+                          <div className="flex flex-col gap-1 pt-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Расходы:
+                              </span>
+                              <span className="font-semibold text-destructive">
+                                {formatCurrency(category.spent)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Доходы:
+                              </span>
+                              <span className="font-semibold text-green-600">
+                                {formatCurrency(category.income)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </ExpandableItem>
@@ -363,13 +390,40 @@ export function CategoryList() {
                             </span>
                           </div>
                           <Progress value={category.progress} className="mb-1 h-2" />
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">
-                              Баланс:
-                            </span>
-                            <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
-                              {formatCurrency(category.balance)}
-                            </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Баланс:
+                              </span>
+                              <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
+                                {formatCurrency(category.balance)}
+                              </span>
+                            </div>
+                            <div className={cn(
+                              "grid grid-rows-[0fr] transition-all duration-300 ease-in-out",
+                              expandedCategoryId === category.id && "grid-rows-[1fr]"
+                            )}>
+                              <div className="overflow-hidden">
+                                <div className="flex flex-col gap-1 pt-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      Расходы:
+                                    </span>
+                                    <span className="font-semibold text-destructive">
+                                      {formatCurrency(category.spent)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      Доходы:
+                                    </span>
+                                    <span className="font-semibold text-green-600">
+                                      {formatCurrency(category.income)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </ExpandableItem>
