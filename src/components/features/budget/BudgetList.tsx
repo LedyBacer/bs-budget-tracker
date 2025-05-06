@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
 // import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { PlusCircle, Pencil, Trash2 } from 'lucide-react'; // Добавили иконки
+import { PlusCircle, Pencil, Trash2, ChevronDown } from 'lucide-react'; // Добавили иконки
 import { BudgetForm } from './BudgetForm';
 // Импортируем AlertDialog для подтверждения удаления
 import {
@@ -112,6 +112,12 @@ export function BudgetList() {
           {!isListExpanded && currentBudget && (
             <span className="text-md">{currentBudget.name}</span>
           )}
+          <ChevronDown 
+            className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              isListExpanded ? "rotate-180" : "rotate-0"
+            )}
+          />
         </div>
         <HapticButton 
           variant="ghost"
