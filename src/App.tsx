@@ -24,6 +24,7 @@ import {
   BudgetDetailsSkeleton,
   CategoryListSkeleton,
   TransactionListSkeleton,
+  Skeleton,
 } from '@/components/ui/skeletons';
 import { HapticButton } from '@/components/ui/haptic-button';
 import { PlusCircle } from 'lucide-react';
@@ -31,6 +32,8 @@ import { SimpleTransactionForm } from '@/components/features/transaction/SimpleT
 
 function AppContent() {
   const { currentBudget, isLoadingBudgets, errorLoadingBudgets } = useBudgets();
+  // const { currentBudget, errorLoadingBudgets } = useBudgets();
+  // const isLoadingBudgets = true;
   const launchParams = useLaunchParams();
   const [isSimpleFormOpen, setIsSimpleFormOpen] = useState(false);
   const transactionListRef = useRef<{ loadData: () => Promise<void> } | null>(null);
@@ -83,6 +86,9 @@ function AppContent() {
         {isLoadingBudgets ? (
           <>
             <BudgetDetailsSkeleton />
+            <div className="mb-6">
+              <Skeleton className="h-10 w-full" />
+            </div>
             <CategoryListSkeleton />
             <TransactionListSkeleton />
           </>

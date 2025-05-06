@@ -4,6 +4,7 @@ import { useBudgets } from '@/contexts/BudgetContext';
 import { Transaction } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { formatCurrency } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeletons';
 
 export function BudgetDetails() {
   const { currentBudget } = useBudgets();
@@ -59,7 +60,11 @@ export function BudgetDetails() {
         <div className="flex justify-between">
           <span className="text-muted-foreground">Текущий остаток:</span>
           {isLoadingTransactions ? (
-            <span className="text-muted-foreground text-xs">Расчет...</span>
+            <div className="flex items-center space-x-1">
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-6 w-8" />
+            </div>
           ) : (
             <span className="text-lg font-bold">{formatCurrency(budgetBalance)}</span>
           )}
