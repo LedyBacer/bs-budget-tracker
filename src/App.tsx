@@ -70,7 +70,7 @@ function AppContent() {
 
   return (
     <div className="bg-background text-foreground flex min-h-screen flex-col">
-      <Header />
+      {/* <Header /> */}
       <PageWrapper>
         {/* Показываем список бюджетов */}
         {isLoadingBudgets ? (
