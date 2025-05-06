@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useBudgets } from '@/contexts/BudgetContext';
 import { Category } from '@/types';
-import { HapticButton } from '@/components/ui/haptic-button';
 import { PlusCircle } from 'lucide-react';
 import { CategoryForm } from './CategoryForm';
 import { CategoryListSkeleton } from '@/components/ui/skeletons';
@@ -10,6 +9,7 @@ import { usePagination, VISIBLE_CARDS_COUNT } from '../hooks/useVisibleCards';
 import { ExpandableCategoryItem } from './ExpandableCategoryItem';
 import { BudgetLimitsWarning } from './BudgetLimitsWarning';
 import { calculateTotalLimits, chunkArray } from '../utils/categoryUtils';
+import { ActionButton } from '@/components/ui/action-button';
 
 export function CategoryList() {
   const { currentBudget } = useBudgets();
@@ -69,10 +69,7 @@ export function CategoryList() {
     <div className="mb-6">
       <div className="mb-3 flex items-center justify-between px-1">
         <h3 className="text-md font-semibold">Категории бюджета:</h3>
-        <HapticButton variant="ghost" size="sm" onClick={handleAddCategoryClick}>
-          <PlusCircle className="mr-1 h-4 w-4" />
-          Добавить
-        </HapticButton>
+        <ActionButton onClick={handleAddCategoryClick} />
       </div>
 
       {/* Предупреждения о лимитах бюджета */}

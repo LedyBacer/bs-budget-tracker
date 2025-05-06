@@ -18,7 +18,10 @@ import { BudgetProvider, useBudgets } from '@/contexts/BudgetContext';
 import { BudgetList } from '@/components/features/budget/BudgetList';
 import { BudgetDetails } from '@/components/features/budget/BudgetDetails';
 import { CategoryList } from '@/components/features/category';
-import { TransactionList } from '@/components/features/transaction/TransactionList';
+import { 
+  TransactionList, 
+  SimpleTransactionForm
+} from '@/components/features/transaction';
 import {
   BudgetListSkeleton,
   BudgetDetailsSkeleton,
@@ -28,15 +31,15 @@ import {
 } from '@/components/ui/skeletons';
 import { HapticButton } from '@/components/ui/haptic-button';
 import { PlusCircle } from 'lucide-react';
-import { SimpleTransactionForm } from '@/components/features/transaction/SimpleTransactionForm';
+import { ActionButton } from '@/components/ui/action-button';
 
 function AppContent() {
-  const { currentBudget, isLoadingBudgets, errorLoadingBudgets } = useBudgets();
-  // const { currentBudget, errorLoadingBudgets } = useBudgets();
-  // const isLoadingBudgets = true;
+  const { currentBudget, isLoadingBudgets, errorLoadingBudgets, reloadBudgets } = useBudgets();
   const launchParams = useLaunchParams();
   const [isSimpleFormOpen, setIsSimpleFormOpen] = useState(false);
   const transactionListRef = useRef<{ loadData: () => Promise<void> } | null>(null);
+  const [dataVersion, setDataVersion] = useState(0); 
+
   const currentUser =
     launchParams.tgWebAppData &&
     typeof launchParams.tgWebAppData === 'object' &&
@@ -61,28 +64,21 @@ function AppContent() {
     return () => cleanup?.();
   }, []);
 
-  // useEffect(() => {
-  //   // Пока оставим MainButton без действия
-  //   const handleMainClick = () => console.log('Main button clicked!');
-  //   mainButton.setParams.ifAvailable({ text: 'MAIN ACTION', isVisible: true, isEnabled: false }); // Пока выключим
-  //   const cleanup = mainButton.onClick.isAvailable()
-  //     ? mainButton.onClick(handleMainClick)
-  //     : undefined;
-  //   return () => cleanup?.();
-  // }, []);
+  const refreshDependentData = async () => {
+    await reloadBudgets(); 
+    setDataVersion(prevVersion => prevVersion + 1); 
+  };
 
   return (
     <div className="bg-background text-foreground flex min-h-screen flex-col">
       {/* <Header /> */}
       <PageWrapper>
-        {/* Показываем список бюджетов */}
         {isLoadingBudgets ? (
           <BudgetListSkeleton />
         ) : (
           <BudgetList />
         )}
 
-        {/* Показываем детали и категории только если бюджет выбран */}
         {isLoadingBudgets ? (
           <>
             <BudgetDetailsSkeleton />
@@ -96,28 +92,33 @@ function AppContent() {
           <div className="text-destructive p-4 text-center">Ошибка загрузки данных.</div>
         ) : currentBudget ? (
           <>
-            <BudgetDetails />
-            <HapticButton
-              variant="default"
-              size="lg"
-              className="mb-6 w-full"
-              onClick={() => setIsSimpleFormOpen(true)}
-            >
-              <PlusCircle className="mr-2 h-5 w-5" />
-              Добавить транзакцию
-            </HapticButton>
-            <CategoryList />
-            <TransactionList ref={transactionListRef} />
+            <BudgetDetails key={`${currentBudget.id}-${dataVersion}`} />
+            <div className="mb-6">
+              <ActionButton 
+                onClick={() => setIsSimpleFormOpen(true)}
+                text="Добавить транзакцию"
+                icon={<PlusCircle className="mr-2 h-4 w-4" />}
+                variant="default"
+                size="lg"
+                fullWidth={true}
+              />
+            </div>
+            <CategoryList key={`${currentBudget.id}-categories-${dataVersion}`} />
+            <TransactionList 
+              ref={transactionListRef} 
+              budgetId={currentBudget.id}
+              onMajorDataChange={refreshDependentData} 
+            />
             {currentBudget && (
               <SimpleTransactionForm
                 budgetId={currentBudget.id}
                 open={isSimpleFormOpen}
                 onOpenChange={setIsSimpleFormOpen}
-                onTransactionSaved={() => {
-                  // Обновляем список транзакций через ref
+                onTransactionSaved={async () => {
                   if (transactionListRef.current) {
-                    transactionListRef.current.loadData();
+                    await transactionListRef.current.loadData(); 
                   }
+                  await refreshDependentData(); 
                 }}
               />
             )}
@@ -129,91 +130,6 @@ function AppContent() {
             </div>
           )
         )}
-
-        {/* --- Отладочный блок SDK --- */}
-        {/* <div className="mt-auto pt-6">
-          <details className="bg-card text-card-foreground rounded-lg border p-4 text-sm">
-            <summary className="mb-2 cursor-pointer font-semibold">SDK Status & Debug Info</summary>
-
-            <div className="mt-3 space-y-1">
-              <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">
-                User Data (from tgWebAppData):
-              </h4>
-              {currentUser ? (
-                <>
-                  <p>
-                    Status: <span className="font-medium text-green-600">✅ Loaded</span>
-                  </p>
-                  <p>
-                    ID: <span className="font-mono text-xs">{currentUser.id}</span>
-                  </p>
-                  <p>First Name: {currentUser.first_name}</p>
-                  {currentUser.last_name && <p>Last Name: {currentUser.last_name}</p>}
-                  {currentUser.username && <p>Username: @{currentUser.username}</p>}
-                  <p>Is Premium: {currentUser.is_premium ? 'Yes' : 'No'}</p>
-                  <p>Language: {currentUser.language_code || 'N/A'}</p>
-                </>
-              ) : (
-                <p>
-                  Status:{' '}
-                  <span className="font-medium text-red-600">❌ Not Loaded (Check code!)</span>
-                </p>
-              )}
-            </div>
-
-            <div className="mt-3 space-y-1">
-              <h4 className="text-muted-foreground mb-1 text-xs font-medium uppercase">
-                Theme Data:
-              </h4>
-              <p>
-                ThemeParams Mounted:{' '}
-                <span className={themeParams.isMounted() ? 'text-green-600' : 'text-red-600'}>
-                  {themeParams.isMounted() ? '✅ Yes' : '❌ No'}
-                </span>
-              </p>
-              <p>
-                CSS Vars Bound:{' '}
-                <span className={themeParams.isCssVarsBound() ? 'text-green-600' : 'text-red-600'}>
-                  {themeParams.isCssVarsBound() ? '✅ Yes' : '❌ No'}
-                </span>
-              </p>
-              <details className="text-xs">
-                <summary className="text-muted-foreground cursor-pointer">
-                  Raw Theme Colors
-                </summary>
-                <pre className="bg-muted mt-1 max-h-40 overflow-auto rounded p-1 text-[10px] leading-tight">
-                  {JSON.stringify(
-                    {
-                      backgroundColor: themeParams.backgroundColor(),
-                      textColor: themeParams.textColor(),
-                      buttonColor: themeParams.buttonColor(),
-                      buttonTextColor: themeParams.buttonTextColor(),
-                      secondaryBackgroundColor: themeParams.secondaryBackgroundColor(),
-                      hintColor: themeParams.hintColor(),
-                      linkColor: themeParams.linkColor(),
-                      destructiveTextColor: themeParams.destructiveTextColor(),
-                      accentTextColor: themeParams.accentTextColor(),
-                    },
-                    null,
-                    2
-                  )}
-                </pre>
-              </details>
-            </div>
-
-            <div className="mt-3">
-              <details className="text-xs">
-                <summary className="text-muted-foreground cursor-pointer">
-                  Raw Launch Params
-                </summary>
-                <pre className="bg-muted mt-1 max-h-40 overflow-auto rounded p-1 text-[10px] leading-tight">
-                  {JSON.stringify(launchParams, null, 2)}
-                </pre>
-              </details>
-            </div>
-          </details>
-        </div> */}
-        {/* --- Конец отладочного блока --- */}
         
       </PageWrapper>
       <Footer />
@@ -221,7 +137,6 @@ function AppContent() {
   );
 }
 
-// Оборачиваем основной контент в провайдеры
 function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">

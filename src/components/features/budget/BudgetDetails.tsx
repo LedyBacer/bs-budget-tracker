@@ -15,6 +15,11 @@ export function BudgetDetails() {
   const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
   const [expandedBudgetId, setExpandedBudgetId] = useState<string | null>(null);
 
+  console.log(
+    '[BudgetDetails] Render. Current Budget:',
+    currentBudget ? JSON.parse(JSON.stringify(currentBudget)) : null
+  );
+
   const handleEditBudgetClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsFormOpen(true);

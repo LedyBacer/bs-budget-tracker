@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { PlusCircle, ChevronDown } from 'lucide-react';
-import { HapticButton } from '@/components/ui/haptic-button';
+import { ActionButton } from '@/components/ui/action-button';
 import { Budget } from '@/types';
 
 interface BudgetListHeaderProps {
@@ -38,15 +38,10 @@ export function BudgetListHeader({
         />
       </div>
       
-      <HapticButton 
-        variant="ghost"
-        size="sm"
+      <ActionButton 
         onClick={onAddBudgetClick}
         disabled={isLoadingBudgets}
-      >
-        <PlusCircle className="mr-1 h-4 w-4" />
-        Добавить
-      </HapticButton>
+      />
     </div>
   );
 } 

@@ -47,7 +47,7 @@ export function CategoryActions({ category, onEdit, onDelete }: CategoryActionsP
           <HapticButton
             variant="ghost"
             size="sm"
-            className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+            className="flex-1 rounded-md border border-border text-destructive hover:text-destructive py-4.5"
             onClick={(e) => {
               e.stopPropagation();
               setIsDeleteDialogOpen(true);
@@ -73,7 +73,7 @@ export function CategoryActions({ category, onEdit, onDelete }: CategoryActionsP
       <HapticButton
         variant="ghost"
         size="sm"
-        className="flex-1 rounded-md border border-border"
+        className="flex-1 rounded-md border border-border py-4.5"
         onClick={(e) => {
           e.stopPropagation();
           onEdit(category);
