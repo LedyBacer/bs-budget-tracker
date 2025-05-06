@@ -12,6 +12,88 @@ const mockUser: Pick<WebAppUser, 'id' | 'first_name' | 'last_name' | 'username'>
   username: 'demouser',
 };
 
+// Функция для генерации случайной даты в пределах последних 3 месяцев
+const getRandomDate = () => {
+  const now = new Date();
+  const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  return new Date(threeMonthsAgo.getTime() + Math.random() * (now.getTime() - threeMonthsAgo.getTime()));
+};
+
+// Функция для генерации случайной суммы
+const getRandomAmount = (type: TransactionType) => {
+  const min = type === 'expense' ? 100 : 1000;
+  const max = type === 'expense' ? 10000 : 50000;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+// Функция для генерации случайного имени транзакции
+const getRandomTransactionName = (type: TransactionType) => {
+  const expenseNames = [
+    'Продукты',
+    'Обед',
+    'Ужин',
+    'Кофе',
+    'Такси',
+    'Метро',
+    'Кино',
+    'Театр',
+    'Концерт',
+    'Одежда',
+    'Обувь',
+    'Книги',
+    'Подарки',
+    'Ремонт',
+    'Коммунальные',
+    'Интернет',
+    'Телефон',
+    'Медицина',
+    'Спорт',
+    'Развлечения'
+  ];
+  
+  const incomeNames = [
+    'Зарплата',
+    'Аванс',
+    'Возврат долга',
+    'Подарок',
+    'Премия',
+    'Подработка',
+    'Фриланс',
+    'Инвестиции',
+    'Возврат товара',
+    'Компенсация'
+  ];
+
+  const names = type === 'expense' ? expenseNames : incomeNames;
+  return names[Math.floor(Math.random() * names.length)];
+};
+
+// Генерация тестовых транзакций
+const generateTestTransactions = (): Transaction[] => {
+  const transactions: Transaction[] = [];
+  const budgetIds = ['b1', 'b2'];
+  const categoryIds = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10'];
+  
+  for (let i = 0; i < 100; i++) {
+    const type: TransactionType = Math.random() > 0.7 ? 'income' : 'expense';
+    const budgetId = budgetIds[Math.floor(Math.random() * budgetIds.length)];
+    const categoryId = categoryIds[Math.floor(Math.random() * categoryIds.length)];
+    
+    transactions.push({
+      id: generateId(),
+      budgetId,
+      categoryId,
+      type,
+      amount: getRandomAmount(type),
+      name: getRandomTransactionName(type),
+      createdAt: getRandomDate(),
+      author: mockUser,
+    });
+  }
+  
+  return transactions;
+};
+
 let budgets: Budget[] = [
   {
     id: 'b1',
@@ -40,68 +122,8 @@ let categories: Category[] = [
   { id: 'c10', budgetId: 'b2', name: 'Рестораны', limit: 25000 },
 ];
 
-let transactions: Transaction[] = [
-  {
-    id: generateId(),
-    budgetId: 'b1',
-    categoryId: 'c1',
-    type: 'expense',
-    amount: 1500,
-    name: 'Обед',
-    createdAt: new Date('2024-01-05T13:00:00Z'),
-    author: mockUser,
-  },
-  {
-    id: generateId(),
-    budgetId: 'b1',
-    categoryId: 'c1',
-    type: 'expense',
-    amount: 3000,
-    name: 'Продукты',
-    createdAt: new Date('2024-01-06T18:30:00Z'),
-    author: mockUser,
-  },
-  {
-    id: generateId(),
-    budgetId: 'b1',
-    categoryId: 'c2',
-    type: 'expense',
-    amount: 500,
-    name: 'Метро',
-    createdAt: new Date('2024-01-07T09:00:00Z'),
-    author: mockUser,
-  },
-  {
-    id: generateId(),
-    budgetId: 'b1',
-    categoryId: 'c3',
-    type: 'income',
-    amount: 1000,
-    name: 'Вернули долг за кино',
-    createdAt: new Date('2024-01-08T20:00:00Z'),
-    author: mockUser,
-  },
-  {
-    id: generateId(),
-    budgetId: 'b2',
-    categoryId: 'c5',
-    type: 'expense',
-    amount: 44500,
-    name: 'Билеты до Сочи',
-    createdAt: new Date('2024-02-11T10:00:00Z'),
-    author: mockUser,
-  },
-  {
-    id: generateId(),
-    budgetId: 'b2',
-    categoryId: 'c4',
-    type: 'expense',
-    amount: 78000,
-    name: 'Оплата отеля',
-    createdAt: new Date('2024-02-12T14:00:00Z'),
-    author: mockUser,
-  },
-];
+// Инициализация транзакций с тестовыми данными
+let transactions: Transaction[] = generateTestTransactions();
 
 // Имитация задержки сети
 const fakeNetworkDelay = (delay = 300) => new Promise((res) => setTimeout(res, delay));
@@ -241,14 +263,34 @@ export const deleteCategory = async (categoryId: string): Promise<boolean> => {
 };
 
 // == Транзакции ==
-export const getTransactionsByBudgetId = async (budgetId: string): Promise<Transaction[]> => {
+export const getTransactionsByBudgetId = async (
+  budgetId: string,
+  options?: { page?: number; limit?: number }
+): Promise<Transaction[]> => {
   await fakeNetworkDelay();
-  console.log('Mock API: getTransactionsByBudgetId called for', budgetId);
+  console.log('Mock API: getTransactionsByBudgetId called for', budgetId, 'with options:', options);
   if (!budgetId) return [];
+  
+  const { page = 1, limit = 10 } = options || {};
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  
   // Сортируем по дате, самые новые сверху
-  return transactions
+  const filteredTransactions = transactions
     .filter((t) => t.budgetId === budgetId)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  
+  console.log('Mock API: Found transactions:', {
+    total: filteredTransactions.length,
+    page,
+    limit,
+    startIndex,
+    endIndex,
+    willReturn: filteredTransactions.slice(startIndex, endIndex).length
+  });
+
+  return filteredTransactions
+    .slice(startIndex, endIndex)
     .map((t) => ({ ...t })); // Возвращаем копии
 };
 
