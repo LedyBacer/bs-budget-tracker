@@ -52,7 +52,7 @@ export function BudgetListSkeleton() {
 
 export function BudgetDetailsSkeleton() {
   return (
-    <div className="bg-card text-card-foreground mb-6 rounded-lg border p-4">
+    <div className="bg-card text-card-foreground mb-6 rounded-lg border p-4.5">
       <div className="mb-3">
         <Skeleton className="mt-1 h-6 w-48" />
         {/* <div className="mt-1 flex items-center space-x-2">
@@ -64,14 +64,14 @@ export function BudgetDetailsSkeleton() {
       <div className="space-y-1 text-sm">
         <div className="flex space-y-2 justify-between">
           <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-18" />
         </div>
         <div className="flex justify-between">
           <Skeleton className="h-4 w-32" />
           <div className="flex items-center space-x-1">
             <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-6 w-8" />
+            {/* <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-6 w-8" /> */}
           </div>
         </div>
       </div>

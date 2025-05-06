@@ -1,5 +1,5 @@
 // src/components/features/transaction/TransactionForm.tsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 // Важно: Импортируем Controller
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,17 +34,12 @@ import { formatNumberWithSpaces, parseFormattedNumber } from '@/lib/utils';
 // --- Схема валидации Zod для транзакции ---
 const transactionSchema = z.object({
   type: z.enum(['expense', 'income'], { required_error: 'Выберите тип транзакции' }),
-  amount: z.preprocess(
-    (val) => (val === '' ? undefined : Number(val)),
-    z
-      .number({ invalid_type_error: 'Сумма должна быть числом' })
-      .positive({ message: 'Сумма должна быть положительной' })
-      .min(0.01, { message: 'Сумма должна быть больше 0' })
-  ),
+  amount: z.number({ required_error: 'Введите сумму' })
+    .positive({ message: 'Сумма должна быть положительной' })
+    .min(0.01, { message: 'Сумма должна быть больше 0' }),
   categoryId: z.string().min(1, { message: 'Выберите категорию' }),
   name: z.string().optional(),
   comment: z.string().optional(),
-  // Дата и время теперь обязательны по схеме
   createdAt: z.date({ required_error: 'Выберите дату' }),
 });
 
@@ -65,17 +60,16 @@ export function TransactionForm({
   onOpenChange,
   onTransactionSaved,
 }: TransactionFormProps) {
-  useScrollToInput({ isOpen: open }); // Передаем состояние открытия
-  console.log('TransactionForm rendered with props:', { budgetId, open, transactionToEdit });
+  useScrollToInput({ isOpen: open });
   
   const launchParams = useLaunchParams();
-  // Пытаемся получить пользователя, но проверяем на undefined
-  const currentUser =
-    launchParams.tgWebAppData &&
-    typeof launchParams.tgWebAppData === 'object' &&
-    'user' in launchParams.tgWebAppData
-      ? (launchParams.tgWebAppData.user as WebAppUser | undefined)
-      : undefined;
+  const currentUser = useMemo(() => {
+    if (launchParams.tgWebAppData && typeof launchParams.tgWebAppData === 'object') {
+      const user = (launchParams.tgWebAppData as { user?: WebAppUser }).user;
+      return user;
+    }
+    return undefined;
+  }, [launchParams.tgWebAppData]);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
@@ -87,16 +81,14 @@ export function TransactionForm({
     register,
     handleSubmit,
     reset,
-    control, // Используем control для Controller
+    control,
     setValue,
     formState: { errors, isDirty, isValid },
-    // watch   // watch больше не нужен напрямую для datetime-local с Controller
   } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
-    // defaultValues остаются здесь, Controller их подхватит
     defaultValues: {
       type: transactionToEdit?.type || 'expense',
-      amount: transactionToEdit?.amount || undefined,
+      amount: transactionToEdit?.amount || 0,
       categoryId: transactionToEdit?.categoryId || '',
       name: transactionToEdit?.name || '',
       comment: transactionToEdit?.comment || '',
@@ -114,7 +106,7 @@ export function TransactionForm({
       setCategories(cats);
     } catch (error) {
       console.error('Failed to load categories for form:', error);
-      setSubmitError('Ошибка загрузки категорий'); // Уведомляем пользователя
+      setSubmitError('Ошибка загрузки категорий');
     } finally {
       setIsLoadingCategories(false);
     }
@@ -130,8 +122,8 @@ export function TransactionForm({
   // Сброс формы при изменении данных для редактирования или при открытии/закрытии
   useEffect(() => {
     if (open) {
-      const initialAmount = transactionToEdit?.amount || undefined;
-      setFormattedAmount(initialAmount ? formatNumberWithSpaces(initialAmount) : '');
+      const initialAmount = transactionToEdit?.amount || 0;
+      setFormattedAmount(formatNumberWithSpaces(initialAmount));
       reset({
         type: transactionToEdit?.type || 'expense',
         amount: initialAmount,
@@ -141,105 +133,73 @@ export function TransactionForm({
         createdAt: transactionToEdit?.createdAt || new Date(),
       });
       setSubmitError(null);
-      loadCategories();
-    } else {
-      // reset(); // Сбрасываем при закрытии - МОЖЕТ БЫТЬ ЛИШНИМ, если open меняется только на false при успешном сабмите/отмене
     }
-  }, [transactionToEdit, open, reset, loadCategories]);
+  }, [transactionToEdit, open, reset]);
+
+  // Устанавливаем тип транзакции при открытии формы
+  useEffect(() => {
+    if (open && !transactionToEdit) {
+      setValue('type', 'expense', { shouldValidate: true, shouldDirty: true });
+    }
+  }, [open, transactionToEdit, setValue]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const formatted = formatNumberWithSpaces(value);
-    setFormattedAmount(formatted);
-    setValue('amount', parseFormattedNumber(value));
+    const value = e.target.value.replace(/\s/g, '');
+    setFormattedAmount(formatNumberWithSpaces(Number(value)));
+    setValue('amount', Number(value) || 0, { shouldValidate: true });
   };
 
-  // --- Обработчик отправки формы ---
   const onSubmit: SubmitHandler<TransactionFormData> = async (data) => {
-    // Проверяем пользователя еще раз НА МОМЕНТ ОТПРАВКИ
     if (!currentUser) {
-      const currentLp = launchParams; // Получаем актуальные параметры на момент клика
-      const userFromLp = currentLp.initData?.user as WebAppUser | undefined;
-
+      const userFromLp = (launchParams.tgWebAppData as { user?: WebAppUser })?.user;
       if (!userFromLp) {
-        console.error('Submit blocked: currentUser is still undefined.', currentLp);
-        setSubmitError(
-          'Не удалось определить пользователя Telegram. Попробуйте перезапустить приложение.'
-        );
-        // Используем popup, если доступен
-        popup.open.ifAvailable({
-          title: 'Ошибка',
-          message:
-            'Не удалось получить данные пользователя Telegram. Попробуйте перезапустить приложение.',
-        });
-        return; // Прерываем отправку
+        console.error('Submit blocked: currentUser is still undefined.');
+        setSubmitError('Ошибка: не удалось получить данные пользователя');
+        return;
       }
-      // Если пользователь появился, используем его
-      console.warn('currentUser was initially undefined, but found in launchParams on submit.');
-      // authorInfo будет создан ниже с userFromLp
     }
 
     setIsSubmitting(true);
     setSubmitError(null);
-    console.log(
-      'Submitting transaction form with user:',
-      currentUser || launchParams.initData?.user
-    ); // Логируем пользователя
-
-    // Готовим данные автора, используя актуальные данные на момент сабмита
-    const authorInfo: Pick<WebAppUser, 'id' | 'first_name' | 'last_name' | 'username'> | null =
-      currentUser || launchParams.initData?.user
-        ? {
-            id: (currentUser || launchParams.initData!.user!).id,
-            first_name: (currentUser || launchParams.initData!.user!).first_name,
-            last_name: (currentUser || launchParams.initData!.user!).last_name,
-            username: (currentUser || launchParams.initData!.user!).username,
-          }
-        : null;
-
-    if (!authorInfo) {
-      // Эта проверка дублирует первую, но на всякий случай
-      setSubmitError('Ошибка получения данных автора.');
-      setIsSubmitting(false);
-      return;
-    }
 
     try {
+      const authorInfo = currentUser || (launchParams.tgWebAppData as { user?: WebAppUser })?.user;
+      if (!authorInfo) {
+        throw new Error('Не удалось получить данные пользователя');
+      }
+
       if (transactionToEdit) {
-        // Обновление существующей
-        const updateData: Partial<TransactionFormData> = {
+        await mockApi.updateTransaction(transactionToEdit.id, {
           type: data.type,
           amount: data.amount,
           categoryId: data.categoryId,
           name: data.name,
           comment: data.comment,
           createdAt: data.createdAt,
-        };
-        await mockApi.updateTransaction(transactionToEdit.id, updateData);
+        });
       } else {
-        // Добавление новой транзакции
         await mockApi.addTransaction(
           budgetId,
           data.categoryId,
           data.type,
           data.amount,
-          authorInfo, // Передаем полученные данные автора
+          {
+            id: authorInfo.id,
+            first_name: authorInfo.first_name,
+            last_name: authorInfo.last_name,
+            username: authorInfo.username,
+          },
           data.name,
           data.comment,
           data.createdAt
         );
       }
-      onTransactionSaved(); // Вызываем колбэк для обновления списков
-      onOpenChange(false); // Закрываем диалог
-      // reset(); // reset теперь в useEffect при открытии/смене данных
+
+      onTransactionSaved();
+      onOpenChange(false);
     } catch (error) {
       console.error('Failed to save transaction:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Не удалось сохранить транзакцию');
-      // Используем popup для ошибки сохранения
-      popup.open.ifAvailable({
-        title: 'Ошибка сохранения',
-        message: error instanceof Error ? error.message : 'Не удалось сохранить транзакцию',
-      });
+      setSubmitError('Ошибка при сохранении транзакции');
     } finally {
       setIsSubmitting(false);
     }
@@ -276,38 +236,35 @@ export function TransactionForm({
           <div className="grid gap-4 py-4">
             {/* --- Тип транзакции (с Controller) --- */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Тип</Label>
-              <div className="col-span-3 flex w-full gap-2 justify-between">
-                <Controller
-                  control={control}
-                  name="type"
-                  render={({ field }) => (
-                    <>
-                      <HapticButton
-                        type="button"
-                        variant={field.value === 'income' ? 'default' : 'outline'}
-                        className="max-w-[107px] flex-1 flex items-center justify-center"
-                        onClick={() => field.onChange('income')}
-                        disabled={isSubmitting}
-                      >
-                        <Plus className={`h-4 w-4 ${field.value === 'income' ? 'text-white' : 'text-primary'}`} />
-                      </HapticButton>
-                      <HapticButton
-                        type="button"
-                        variant={field.value === 'expense' ? 'default' : 'outline'}
-                        className="max-w-[107px] flex-1 flex items-center justify-center"
-                        onClick={() => field.onChange('expense')}
-                        disabled={isSubmitting}
-                      >
-                        <Minus className={`h-4 w-4 ${field.value === 'expense' ? 'text-white' : 'text-primary'}`} />
-                      </HapticButton>
-                    </>
-                  )}
-                />
-                {errors.type && (
-                  <p className="text-destructive mt-1 text-xs">{errors.type.message}</p>
+              <Label htmlFor="type" className="text-right">
+                Тип
+              </Label>
+              <Controller
+                name="type"
+                control={control}
+                render={({ field: { value, onChange } }) => (
+                  <div className="col-span-3 flex w-full gap-2 justify-between">
+                    <HapticButton
+                      type="button"
+                      variant={value === 'income' ? 'default' : 'outline'}
+                      className="max-w-[107px] flex-1 flex items-center justify-center"
+                      onClick={() => onChange('income')}
+                      disabled={isSubmitting}
+                    >
+                      <Plus className={`h-4 w-4 ${value === 'income' ? 'text-white' : 'text-primary'}`} />
+                    </HapticButton>
+                    <HapticButton
+                      type="button"
+                      variant={value === 'expense' ? 'default' : 'outline'}
+                      className="max-w-[107px] flex-1 flex items-center justify-center"
+                      onClick={() => onChange('expense')}
+                      disabled={isSubmitting}
+                    >
+                      <Minus className={`h-4 w-4 ${value === 'expense' ? 'text-white' : 'text-primary'}`} />
+                    </HapticButton>
+                  </div>
                 )}
-              </div>
+              />
             </div>
 
             {/* --- Категория (с Controller) --- */}

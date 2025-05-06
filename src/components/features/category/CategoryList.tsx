@@ -26,8 +26,6 @@ import React from 'react';
 import { CategoryListSkeleton } from '@/components/ui/skeletons';
 
 interface CategoryWithBalance extends Category {
-  spent: number;
-  balance: number;
   progress: number; // Процент потраченного от лимита
   transactionCount: number; // Добавляем количество транзакций
 }
@@ -134,22 +132,12 @@ export function CategoryList() {
   const categoriesWithBalance: CategoryWithBalance[] = useMemo(() => {
     return categories.map((category) => {
       const categoryTransactions = transactions.filter((t) => t.categoryId === category.id);
-      const spent = categoryTransactions
-        .filter((t) => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-      const income = categoryTransactions // Учитываем и пополнения ВНУТРИ категории
-        .filter((t) => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const balance = category.limit - spent + income;
       // Прогресс считаем только от расходов относительно лимита
       const progress =
-        category.limit > 0 ? Math.min(100, Math.max(0, (spent / category.limit) * 100)) : 0;
+        category.limit > 0 ? Math.min(100, Math.max(0, (category.spent / category.limit) * 100)) : 0;
 
       return {
         ...category,
-        spent,
-        balance,
         progress,
         transactionCount: categoryTransactions.length, // Добавляем количество транзакций
       };
@@ -249,9 +237,8 @@ export function CategoryList() {
                               e.stopPropagation();
                               setCategoryToDelete(category);
                             }}
-                            aria-label="Удалить категорию"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            <Trash2 className="mr-1 h-4 w-4" />
                             Удалить
                           </HapticButton>
                         </AlertDialogTrigger>
@@ -259,24 +246,12 @@ export function CategoryList() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Вы уверены, что хотите удалить категорию "{category.name}"? Это
-                              действие нельзя будет отменить. Категорию можно удалить, только если по ней
-                              нет транзакций.
+                              Это действие нельзя отменить. Все транзакции в этой категории будут удалены.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}>
-                              Отмена
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                await handleDeleteCategory();
-                              }}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Удалить
-                            </AlertDialogAction>
+                            <AlertDialogCancel>Отмена</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteCategory}>Удалить</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -288,15 +263,14 @@ export function CategoryList() {
                           e.stopPropagation();
                           handleEditCategoryClick(category);
                         }}
-                        aria-label="Редактировать категорию"
                       >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Редактировать
+                        <Pencil className="mr-1 h-4 w-4" />
+                        Изменить
                       </HapticButton>
                     </div>
                   }
                 >
-                  <div className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm h-full w-full">
+                  <div className="bg-card text-card-foreground group relative rounded-lg border p-3 text-sm h-full">
                     <div className="mb-1 flex items-center justify-between">
                       <span className="font-medium">{category.name}</span>
                       <span className="text-muted-foreground text-xs">
@@ -306,10 +280,10 @@ export function CategoryList() {
                     <Progress value={category.progress} className="mb-1 h-2" />
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">
-                        Расход: {formatCurrency(category.spent)}
+                        Баланс:
                       </span>
                       <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
-                        Остаток: {formatCurrency(category.balance)}
+                        {formatCurrency(category.balance)}
                       </span>
                     </div>
                   </div>
@@ -348,9 +322,8 @@ export function CategoryList() {
                                     e.stopPropagation();
                                     setCategoryToDelete(category);
                                   }}
-                                  aria-label="Удалить категорию"
                                 >
-                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <Trash2 className="mr-1 h-4 w-4" />
                                   Удалить
                                 </HapticButton>
                               </AlertDialogTrigger>
@@ -358,24 +331,12 @@ export function CategoryList() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Вы уверены, что хотите удалить категорию "{category.name}"? Это
-                                    действие нельзя будет отменить. Категорию можно удалить, только если по ней
-                                    нет транзакций.
+                                    Это действие нельзя отменить. Все транзакции в этой категории будут удалены.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}>
-                                    Отмена
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      await handleDeleteCategory();
-                                    }}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Удалить
-                                  </AlertDialogAction>
+                                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleDeleteCategory}>Удалить</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -387,10 +348,9 @@ export function CategoryList() {
                                 e.stopPropagation();
                                 handleEditCategoryClick(category);
                               }}
-                              aria-label="Редактировать категорию"
                             >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Редактировать
+                              <Pencil className="mr-1 h-4 w-4" />
+                              Изменить
                             </HapticButton>
                           </div>
                         }
@@ -405,10 +365,10 @@ export function CategoryList() {
                           <Progress value={category.progress} className="mb-1 h-2" />
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground">
-                              Расход: {formatCurrency(category.spent)}
+                              Баланс:
                             </span>
                             <span className={`font-semibold ${category.balance < 0 ? 'text-destructive' : ''}`}>
-                              Остаток: {formatCurrency(category.balance)}
+                              {formatCurrency(category.balance)}
                             </span>
                           </div>
                         </div>

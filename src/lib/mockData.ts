@@ -115,26 +115,32 @@ let budgets: Budget[] = [
     name: 'Январь 2024',
     totalAmount: 115201,
     createdAt: new Date('2024-01-01T10:00:00Z'),
+    totalExpense: 0,
+    totalIncome: 0,
+    balance: 0
   },
   {
     id: 'b2',
     name: 'Отпуск Сочи',
     totalAmount: 150000,
     createdAt: new Date('2024-02-10T12:00:00Z'),
+    totalExpense: 0,
+    totalIncome: 0,
+    balance: 0
   },
 ];
 
 let categories: Category[] = [
-  { id: 'c1', budgetId: 'b1', name: 'Еда', limit: 40000 },
-  { id: 'c2', budgetId: 'b1', name: 'Транспорт', limit: 10000 },
-  { id: 'c3', budgetId: 'b1', name: 'Развлечения', limit: 15000 },
-  { id: 'c4', budgetId: 'b1', name: 'Кексы', limit: 100 },
-  { id: 'c5', budgetId: 'b1', name: 'Сникеры', limit: 100 },
-  { id: 'c6', budgetId: 'b1', name: 'Игры', limit: 15000 },
-  { id: 'c7', budgetId: 'b1', name: 'Прочее', limit: 1 },
-  { id: 'c8', budgetId: 'b2', name: 'Отель', limit: 80000 },
-  { id: 'c9', budgetId: 'b2', name: 'Авиабилеты', limit: 45000 },
-  { id: 'c10', budgetId: 'b2', name: 'Рестораны', limit: 25000 },
+  { id: 'c1', budgetId: 'b1', name: 'Еда', limit: 40000, spent: 0, income: 0, balance: 40000 },
+  { id: 'c2', budgetId: 'b1', name: 'Транспорт', limit: 10000, spent: 0, income: 0, balance: 10000 },
+  { id: 'c3', budgetId: 'b1', name: 'Развлечения', limit: 15000, spent: 0, income: 0, balance: 15000 },
+  { id: 'c4', budgetId: 'b1', name: 'Кексы', limit: 100, spent: 0, income: 0, balance: 100 },
+  { id: 'c5', budgetId: 'b1', name: 'Сникеры', limit: 100, spent: 0, income: 0, balance: 100 },
+  { id: 'c6', budgetId: 'b1', name: 'Игры', limit: 15000, spent: 0, income: 0, balance: 15000 },
+  { id: 'c7', budgetId: 'b1', name: 'Прочее', limit: 1, spent: 0, income: 0, balance: 1 },
+  { id: 'c8', budgetId: 'b2', name: 'Отель', limit: 80000, spent: 0, income: 0, balance: 80000 },
+  { id: 'c9', budgetId: 'b2', name: 'Авиабилеты', limit: 45000, spent: 0, income: 0, balance: 45000 },
+  { id: 'c10', budgetId: 'b2', name: 'Рестораны', limit: 25000, spent: 0, income: 0, balance: 25000 },
 ];
 
 // Инициализация транзакций с тестовыми данными
@@ -164,6 +170,9 @@ export const addBudget = async (name: string, totalAmount: number): Promise<Budg
     name,
     totalAmount,
     createdAt: new Date(),
+    totalExpense: 0,
+    totalIncome: 0,
+    balance: 0
   };
   budgets.push(newBudget);
   return { ...newBudget }; // Возвращаем копию
@@ -237,6 +246,9 @@ export const addCategory = async (
     budgetId,
     name,
     limit,
+    spent: 0,
+    income: 0,
+    balance: limit
   };
   categories.push(newCategory);
   return { ...newCategory };
@@ -404,6 +416,59 @@ export const getTransactionsByBudgetId = async (
     .map((t) => ({ ...t })); // Возвращаем копии
 };
 
+// Функция для пересчета значений бюджета
+const recalculateBudgetValues = (budgetId: string) => {
+  const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
+  
+  // Считаем общий расход и доход
+  const totalExpense = budgetTransactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const totalIncome = budgetTransactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Обновляем бюджет
+  const budgetIndex = budgets.findIndex(b => b.id === budgetId);
+  if (budgetIndex !== -1) {
+    budgets[budgetIndex] = {
+      ...budgets[budgetIndex],
+      totalExpense,
+      totalIncome,
+      balance: totalIncome - totalExpense
+    };
+  }
+};
+
+// Функция для пересчета значений категорий
+const recalculateCategoryValues = (budgetId: string) => {
+  const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
+  
+  // Обновляем значения для каждой категории
+  categories = categories.map(category => {
+    if (category.budgetId !== budgetId) return category;
+
+    const categoryTransactions = budgetTransactions.filter(t => t.categoryId === category.id);
+    
+    const spent = categoryTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const income = categoryTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+      ...category,
+      spent,
+      income,
+      balance: category.limit - spent + income
+    };
+  });
+};
+
+// Обновляем функцию addTransaction
 export const addTransaction = async (
   budgetId: string,
   categoryId: string,
@@ -436,9 +501,15 @@ export const addTransaction = async (
     createdAt: createdAt || new Date(),
   };
   transactions.push(newTransaction);
+  
+  // Пересчитываем значения после добавления транзакции
+  recalculateBudgetValues(budgetId);
+  recalculateCategoryValues(budgetId);
+  
   return { ...newTransaction };
 };
 
+// Обновляем функцию updateTransaction
 export const updateTransaction = async (
   transactionId: string,
   data: Partial<TransactionFormData>
@@ -450,22 +521,41 @@ export const updateTransaction = async (
     throw new Error('Transaction not found');
   }
 
-  // Обновляем только переданные поля (упрощенно)
+  const oldTransaction = transactions[transactionIndex];
+  const budgetId = oldTransaction.budgetId;
+
+  // Обновляем только переданные поля
   const updatedTransaction = {
-    ...transactions[transactionIndex],
+    ...oldTransaction,
     ...data,
-    // updatedAt: new Date(), // Для реального API
-    // lastEditor: currentUser, // Для реального API
   };
-  transactions[transactionIndex] = updatedTransaction as Transaction; // Приведение типа, т.к. data частичное
-  console.warn('Update transaction in mockData is basic.');
+  transactions[transactionIndex] = updatedTransaction as Transaction;
+
+  // Пересчитываем значения после обновления транзакции
+  recalculateBudgetValues(budgetId);
+  recalculateCategoryValues(budgetId);
+
   return { ...updatedTransaction } as Transaction;
 };
 
+// Обновляем функцию deleteTransaction
 export const deleteTransaction = async (transactionId: string): Promise<boolean> => {
   await fakeNetworkDelay(600, 1200);
   console.log('Mock API: deleteTransaction called for', transactionId);
+  
+  const transactionToDelete = transactions.find(t => t.id === transactionId);
+  if (!transactionToDelete) {
+    return false;
+  }
+
+  const budgetId = transactionToDelete.budgetId;
   const initialLength = transactions.length;
+  
   transactions = transactions.filter((t) => t.id !== transactionId);
+  
+  // Пересчитываем значения после удаления транзакции
+  recalculateBudgetValues(budgetId);
+  recalculateCategoryValues(budgetId);
+
   return transactions.length < initialLength;
 };

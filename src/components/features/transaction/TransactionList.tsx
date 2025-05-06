@@ -391,7 +391,7 @@ const TransactionItem = ({
 
 // Основной компонент
 export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
-  const { currentBudget } = useBudgets();
+  const { currentBudget, reloadBudgets } = useBudgets();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -557,21 +557,25 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleTransactionSaved = async () => {
+    await loadData(true);
+    // Перезагружаем данные бюджета для обновления баланса и расходов
+    await reloadBudgets();
+  };
+
   const handleConfirmDelete = async () => {
     if (!transactionToDelete) return;
     try {
       await mockApi.deleteTransaction(transactionToDelete.id);
       await loadData(true);
+      // Перезагружаем данные бюджета для обновления баланса и расходов
+      await reloadBudgets();
     } catch (error) {
       console.error('Failed to delete transaction:', error);
     } finally {
       setTransactionToDelete(null);
       setIsDeleteDialogOpen(false);
     }
-  };
-
-  const handleTransactionSaved = () => {
-    loadData(true);
   };
 
   // Получаем уникальных пользователей

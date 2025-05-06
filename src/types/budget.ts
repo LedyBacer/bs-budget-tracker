@@ -3,5 +3,8 @@ export interface Budget {
   name: string; // Название бюджета (например, "Январь 2024")
   totalAmount: number; // Общая сумма бюджета
   createdAt: Date; // Дата создания
+  totalExpense: number; // Общая сумма расходов
+  totalIncome: number; // Общая сумма доходов
+  balance: number; // Текущий баланс (доходы - расходы)
   // chat_id?: number | string; // Опционально: Идентификатор чата, к которому привязан бюджет (для бэкенда)
 }
