@@ -25,6 +25,7 @@ import { Category, TransactionType, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { useLaunchParams } from '@telegram-apps/sdk-react';
 import { useScrollToInput } from '@/hooks/useScrollToInput';
+import { formatNumberWithSpaces, parseFormattedNumber } from '@/lib/utils';
 
 // Упрощённая схема валидации
 const simpleTransactionSchema = z.object({
@@ -67,12 +68,14 @@ export function SimpleTransactionForm({
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formattedAmount, setFormattedAmount] = useState<string>('');
 
   const {
     register,
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<SimpleTransactionFormData>({
     resolver: zodResolver(simpleTransactionSchema),
@@ -105,6 +108,7 @@ export function SimpleTransactionForm({
   // Сброс формы при открытии
   useEffect(() => {
     if (open) {
+      setFormattedAmount('');
       reset({
         type: 'expense' as const,
         amount: undefined,
@@ -147,6 +151,13 @@ export function SimpleTransactionForm({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatNumberWithSpaces(value);
+    setFormattedAmount(formatted);
+    setValue('amount', parseFormattedNumber(value));
   };
 
   return (
@@ -249,11 +260,11 @@ export function SimpleTransactionForm({
               <div className="col-span-3">
                 <Input
                   id="amount"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   inputMode="decimal"
-                  placeholder="Например, 1500.50"
-                  {...register('amount')}
+                  placeholder="Например, 1 500.50"
+                  value={formattedAmount}
+                  onChange={handleAmountChange}
                   className={errors.amount ? 'border-destructive' : ''}
                   disabled={isSubmitting}
                 />

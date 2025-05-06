@@ -140,8 +140,9 @@ let categories: Category[] = [
 // Инициализация транзакций с тестовыми данными
 let transactions: Transaction[] = generateTestTransactions();
 
-// Имитация задержки сети
-const fakeNetworkDelay = (delay = 300) => new Promise((res) => setTimeout(res, delay));
+// Имитация задержки сети с случайным временем для реалистичности
+const fakeNetworkDelay = (minDelay = 300, maxDelay = 800) => 
+  new Promise((res) => setTimeout(res, Math.random() * (maxDelay - minDelay) + minDelay));
 
 // --- Функции для имитации API ---
 
@@ -153,7 +154,7 @@ export const getBudgets = async (): Promise<Budget[]> => {
 };
 
 export const addBudget = async (name: string, totalAmount: number): Promise<Budget> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(500, 1000); // Увеличенная задержка для операции создания
   console.log('Mock API: addBudget called with', { name, totalAmount });
   if (!name || totalAmount <= 0) {
     throw new Error('Invalid budget data');
@@ -173,7 +174,7 @@ export const updateBudget = async (
   name: string,
   totalAmount: number
 ): Promise<Budget> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(400, 800); // Средняя задержка для операции обновления
   console.log('Mock API: updateBudget called for', budgetId, 'with', { name, totalAmount });
   const budgetIndex = budgets.findIndex((b) => b.id === budgetId);
   if (budgetIndex === -1) {
@@ -191,7 +192,7 @@ export const updateBudget = async (
 };
 
 export const deleteBudget = async (budgetId: string): Promise<boolean> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(600, 1200); // Увеличенная задержка для операции удаления
   console.log('Mock API: deleteBudget called for', budgetId);
   const initialLength = budgets.length;
   // Удаляем бюджет
@@ -225,7 +226,7 @@ export const addCategory = async (
   name: string,
   limit: number
 ): Promise<Category> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(500, 1000);
   console.log('Mock API: addCategory called for', budgetId, 'with', { name, limit });
   if (!budgetId || !name || limit <= 0) {
     throw new Error('Invalid category data');
@@ -246,7 +247,7 @@ export const updateCategory = async (
   name: string,
   limit: number
 ): Promise<Category> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(400, 800);
   console.log('Mock API: updateCategory called for', categoryId, 'with', { name, limit });
   const categoryIndex = categories.findIndex((c) => c.id === categoryId);
   if (categoryIndex === -1) {
@@ -263,7 +264,7 @@ export const updateCategory = async (
 };
 
 export const deleteCategory = async (categoryId: string): Promise<boolean> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(600, 1200);
   console.log('Mock API: deleteCategory called for', categoryId);
   // Проверка на наличие транзакций (опционально для MVP)
   const hasTransactions = transactions.some((t) => t.categoryId === categoryId);
@@ -291,7 +292,7 @@ export const getTransactionsByBudgetId = async (
     userId?: string;
   }
 ): Promise<Transaction[]> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(300, 600); // Меньшая задержка для чтения
   console.log('Mock API: getTransactionsByBudgetId called for', budgetId, 'with options:', options);
   if (!budgetId) return [];
   
@@ -398,17 +399,6 @@ export const getTransactionsByBudgetId = async (
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   
-  console.log('Mock API: Found transactions:', {
-    total: filteredTransactions.length,
-    page,
-    limit,
-    startIndex,
-    endIndex,
-    willReturn: filteredTransactions.slice(startIndex, endIndex).length,
-    dateRange,
-    dateInterval: getDateInterval(dateRange)
-  });
-
   return filteredTransactions
     .slice(startIndex, endIndex)
     .map((t) => ({ ...t })); // Возвращаем копии
@@ -424,7 +414,7 @@ export const addTransaction = async (
   comment?: string,
   createdAt?: Date
 ): Promise<Transaction> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(500, 1000);
   console.log('Mock API: addTransaction called for', budgetId, categoryId, 'with', {
     type,
     amount,
@@ -441,7 +431,7 @@ export const addTransaction = async (
     type,
     amount,
     author,
-    name: name || `${type === 'expense' ? 'Расход' : 'Пополнение'} по категории`, // Дефолтное имя
+    name: name || `${type === 'expense' ? 'Расход' : 'Пополнение'} по категории`,
     comment,
     createdAt: createdAt || new Date(),
   };
@@ -453,7 +443,7 @@ export const updateTransaction = async (
   transactionId: string,
   data: Partial<TransactionFormData>
 ): Promise<Transaction> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(400, 800);
   console.log('Mock API: updateTransaction called for', transactionId, 'with data:', data);
   const transactionIndex = transactions.findIndex((t) => t.id === transactionId);
   if (transactionIndex === -1) {
@@ -473,7 +463,7 @@ export const updateTransaction = async (
 };
 
 export const deleteTransaction = async (transactionId: string): Promise<boolean> => {
-  await fakeNetworkDelay();
+  await fakeNetworkDelay(600, 1200);
   console.log('Mock API: deleteTransaction called for', transactionId);
   const initialLength = transactions.length;
   transactions = transactions.filter((t) => t.id !== transactionId);

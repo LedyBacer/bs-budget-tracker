@@ -18,6 +18,7 @@ import { Category } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { useBudgets } from '@/contexts/BudgetContext'; // Нам нужен текущий бюджет для валидации
 import { useScrollToInput } from '@/hooks/useScrollToInput'; // Импортируем хук
+import { formatNumberWithSpaces, parseFormattedNumber } from '@/lib/utils';
 
 // Схема валидации Zod
 const categorySchema = z.object({
@@ -52,11 +53,13 @@ export function CategoryForm({
   const { currentBudget } = useBudgets(); // Получаем текущий бюджет для проверки лимитов
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formattedLimit, setFormattedLimit] = useState<string>('');
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
@@ -70,13 +73,22 @@ export function CategoryForm({
   // Сбрасываем форму при изменении categoryToEdit или при закрытии/открытии
   useEffect(() => {
     if (open) {
+      const initialLimit = categoryToEdit?.limit || undefined;
+      setFormattedLimit(initialLimit ? formatNumberWithSpaces(initialLimit) : '');
       reset({
         name: categoryToEdit?.name || '',
-        limit: categoryToEdit?.limit || undefined,
+        limit: initialLimit,
       });
       setSubmitError(null); // Сбрасываем ошибку при открытии
     }
   }, [categoryToEdit, open, reset]);
+
+  const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatNumberWithSpaces(value);
+    setFormattedLimit(formatted);
+    setValue('limit', parseFormattedNumber(value));
+  };
 
   const onSubmit: SubmitHandler<CategoryFormData> = async (data) => {
     setIsSubmitting(true);
@@ -151,13 +163,13 @@ export function CategoryForm({
               <div className="col-span-3">
                 <Input
                   id="limit"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   inputMode="decimal"
-                  {...register('limit')}
+                  placeholder="Например, 5 000"
+                  value={formattedLimit}
+                  onChange={handleLimitChange}
                   className={errors.limit ? 'border-destructive' : ''}
                   disabled={isSubmitting}
-                  placeholder="Например, 5000"
                 />
                 {errors.limit && (
                   <p className="text-destructive mt-1 text-xs">{errors.limit.message}</p>

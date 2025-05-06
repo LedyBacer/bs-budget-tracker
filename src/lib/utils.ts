@@ -45,3 +45,33 @@ export function mediumHaptic() {
     hapticFeedback.impactOccurred('medium');
   }
 }
+
+/**
+ * Форматирует число, добавляя разделители тысяч
+ * @param value - число для форматирования
+ * @returns отформатированная строка
+ */
+export function formatNumberWithSpaces(value: number | string): string {
+  // Преобразуем в строку и удаляем все нецифровые символы кроме точки
+  const stringValue = String(value).replace(/[^\d.]/g, '');
+  
+  // Разделяем на целую и дробную части
+  const [integerPart, decimalPart] = stringValue.split('.');
+  
+  // Форматируем целую часть, добавляя пробелы
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  
+  // Возвращаем результат с дробной частью, если она есть
+  return decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger;
+}
+
+/**
+ * Преобразует отформатированное число обратно в числовое значение
+ * @param value - отформатированная строка
+ * @returns числовое значение
+ */
+export function parseFormattedNumber(value: string): number {
+  // Удаляем все пробелы и заменяем запятую на точку
+  const cleanValue = value.replace(/\s/g, '').replace(',', '.');
+  return Number(cleanValue);
+}

@@ -75,8 +75,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       console.log('BudgetContext: Calling mockApi.addBudget');
       const newBudget = await mockApi.addBudget(name, totalAmount);
       await reloadBudgets(); // Перезагружаем список после добавления
-      // Автоматически выбираем новый бюджет после перезагрузки
-      // selectBudget(newBudget.id); // selectBudget теперь вызывается внутри reloadBudgets при необходимости
+      // Автоматически выбираем новый бюджет
+      selectBudget(newBudget.id);
       console.log('BudgetContext: Budget added successfully, new budget ID:', newBudget.id);
       return newBudget;
     } catch (error) {

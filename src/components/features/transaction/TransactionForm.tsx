@@ -29,6 +29,7 @@ import { useLaunchParams } from '@telegram-apps/sdk-react';
 import { popup } from '@telegram-apps/sdk-react'; // Импортируем popup для уведомлений
 import { Plus, Minus } from 'lucide-react';
 import { useScrollToInput } from '@/hooks/useScrollToInput'; // Импортируем хук
+import { formatNumberWithSpaces, parseFormattedNumber } from '@/lib/utils';
 
 // --- Схема валидации Zod для транзакции ---
 const transactionSchema = z.object({
@@ -80,12 +81,14 @@ export function TransactionForm({
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formattedAmount, setFormattedAmount] = useState<string>('');
 
   const {
     register,
     handleSubmit,
     reset,
     control, // Используем control для Controller
+    setValue,
     formState: { errors, isDirty, isValid },
     // watch   // watch больше не нужен напрямую для datetime-local с Controller
   } = useForm<TransactionFormData>({
@@ -127,21 +130,29 @@ export function TransactionForm({
   // Сброс формы при изменении данных для редактирования или при открытии/закрытии
   useEffect(() => {
     if (open) {
+      const initialAmount = transactionToEdit?.amount || undefined;
+      setFormattedAmount(initialAmount ? formatNumberWithSpaces(initialAmount) : '');
       reset({
-        // Используем reset для установки всех значений
         type: transactionToEdit?.type || 'expense',
-        amount: transactionToEdit?.amount || undefined,
+        amount: initialAmount,
         categoryId: transactionToEdit?.categoryId || '',
         name: transactionToEdit?.name || '',
         comment: transactionToEdit?.comment || '',
         createdAt: transactionToEdit?.createdAt || new Date(),
       });
-      setSubmitError(null); // Сброс ошибки
+      setSubmitError(null);
       loadCategories();
     } else {
       // reset(); // Сбрасываем при закрытии - МОЖЕТ БЫТЬ ЛИШНИМ, если open меняется только на false при успешном сабмите/отмене
     }
   }, [transactionToEdit, open, reset, loadCategories]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatNumberWithSpaces(value);
+    setFormattedAmount(formatted);
+    setValue('amount', parseFormattedNumber(value));
+  };
 
   // --- Обработчик отправки формы ---
   const onSubmit: SubmitHandler<TransactionFormData> = async (data) => {
@@ -355,11 +366,11 @@ export function TransactionForm({
               <div className="col-span-3">
                 <Input
                   id="amount"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   inputMode="decimal"
-                  placeholder="Например, 1500.50"
-                  {...register('amount')} // Оставляем register для простых инпутов
+                  placeholder="Например, 1 500.50"
+                  value={formattedAmount}
+                  onChange={handleAmountChange}
                   className={errors.amount ? 'border-destructive' : ''}
                   disabled={isSubmitting}
                 />

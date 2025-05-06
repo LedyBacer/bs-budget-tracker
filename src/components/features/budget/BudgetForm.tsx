@@ -19,6 +19,7 @@ import { popup } from '@telegram-apps/sdk-react'; // Для уведомлени
 import { Budget } from '@/types'; // Импорт типа
 import * as mockApi from '@/lib/mockData'; // Импорт API
 import { useScrollToInput } from '@/hooks/useScrollToInput'; // Импортируем хук
+import { formatNumberWithSpaces, parseFormattedNumber } from '@/lib/utils';
 
 // Схема валидации Zod для бюджета
 const budgetSchema = z.object({
@@ -54,29 +55,31 @@ export function BudgetForm({
   const { addBudget: addBudgetFromContext, updateBudget: updateBudgetFromContext } = useBudgets();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formattedAmount, setFormattedAmount] = useState<string>('');
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<BudgetFormData>({
     resolver: zodResolver(budgetSchema),
-    // defaultValues теперь зависят от режима (редактирование или добавление)
-    // Мы будем устанавливать их в useEffect ниже
   });
 
   // Сброс и установка значений при открытии/смене режима
   useEffect(() => {
     if (open) {
+      const initialAmount = budgetToEdit?.totalAmount || undefined;
+      setFormattedAmount(initialAmount ? formatNumberWithSpaces(initialAmount) : '');
       reset({
-        // Устанавливаем значения в зависимости от budgetToEdit
         name: budgetToEdit?.name || '',
-        totalAmount: budgetToEdit?.totalAmount || undefined,
+        totalAmount: initialAmount,
       });
       setSubmitError(null);
     } else {
-      reset(); // Сбрасываем при закрытии
+      reset();
+      setFormattedAmount('');
     }
   }, [open, budgetToEdit, reset]);
 
@@ -117,6 +120,13 @@ export function BudgetForm({
     }
   };
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatNumberWithSpaces(value);
+    setFormattedAmount(formatted);
+    setValue('totalAmount', parseFormattedNumber(value));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -153,11 +163,11 @@ export function BudgetForm({
               <div className="col-span-3">
                 <Input
                   id="totalAmount"
-                  type="number"
-                  step="0.01"
+                  type="text"
                   inputMode="decimal"
-                  placeholder="Например, 100000"
-                  {...register('totalAmount')}
+                  placeholder="Например, 100 000"
+                  value={formattedAmount}
+                  onChange={handleAmountChange}
                   className={errors.totalAmount ? 'border-destructive' : ''}
                   disabled={isSubmitting}
                 />
