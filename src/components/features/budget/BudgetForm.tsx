@@ -120,7 +120,6 @@ export function BudgetForm({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            Новый бюджет
             {budgetToEdit ? 'Редактировать бюджет' : 'Новый бюджет'}
           </DialogTitle>
         </DialogHeader>
