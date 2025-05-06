@@ -4,7 +4,7 @@ import { useBudgets } from '@/contexts/BudgetContext';
 import { Transaction, Category, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { formatCurrency, formatDate, cn, mediumHaptic } from '@/lib/utils';
-import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle, Trash2 } from 'lucide-react'; // Иконки для типов и редактирования, добавляем иконку Trash2
+import { ArrowDownCircle, ArrowUpCircle, Edit, PlusCircle, Trash2, Filter, ChevronDown, Calendar } from 'lucide-react'; // Иконки для типов и редактирования, добавляем иконку Trash2 и Filter
 import { HapticButton } from '@/components/ui/haptic-button';
 import { TransactionForm } from './TransactionForm';
 import { ExpandableItem } from '@/components/ui/expandable-item';
@@ -21,8 +21,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { TransactionListSkeleton } from '@/components/ui/skeletons';
 import { useInView } from 'react-intersection-observer';
-import { format, isToday, isYesterday, isThisYear, differenceInDays } from 'date-fns';
+import { format, isToday, isYesterday, isThisYear, differenceInDays, startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 // Опционально: Интерфейс для транзакции с присоединенным именем категории
 interface TransactionWithCategoryName extends Transaction {
@@ -49,6 +58,19 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
   const { ref: loadMoreRef, inView } = useInView();
   const ITEMS_PER_PAGE = 10;
   const isInitialLoad = useRef(true);
+
+  // Добавляем состояние для фильтров
+  const [filters, setFilters] = useState({
+    dateRange: 'all' as 'all' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom',
+    startDate: '',
+    endDate: '',
+    userId: 'all' as string,
+    type: 'all' as 'all' | 'expense' | 'income',
+    categoryId: 'all' as string,
+  });
+
+  // Добавляем состояние для открытия/закрытия фильтров
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // --- ЛОГ МОНТИРОВАНИЯ/РАЗМОНТИРОВАНИЯ ---
   useEffect(() => {
@@ -91,7 +113,79 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
   }, [transactions, categories]);
 
-  // useCallback для загрузки данных
+  // Добавляем обработчик изменения фильтров
+  const handleFiltersChange = useCallback(async (newFilters: typeof filters) => {
+    setFilters(newFilters);
+    setPage(1);
+    setTransactions([]);
+    setHasMore(true);
+    setIsLoading(true);
+    
+    try {
+      const [trans, cats] = await Promise.all([
+        mockApi.getTransactionsByBudgetId(currentBudget!.id, {
+          page: 1,
+          limit: ITEMS_PER_PAGE,
+          dateRange: newFilters.dateRange,
+          startDate: newFilters.startDate,
+          endDate: newFilters.endDate,
+          type: newFilters.type,
+          categoryId: newFilters.categoryId,
+          userId: newFilters.userId
+        }),
+        mockApi.getCategoriesByBudgetId(currentBudget!.id),
+      ]);
+
+      setTransactions(trans);
+      setCategories(cats);
+      setHasMore(trans.length === ITEMS_PER_PAGE);
+    } catch (error) {
+      console.error('Failed to load transactions/categories:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentBudget]);
+
+  // Обновляем обработчики изменения фильтров
+  const handleDateRangeChange = (value: typeof filters.dateRange) => {
+    handleFiltersChange({
+      ...filters,
+      dateRange: value,
+      // Сбрасываем даты при выборе предустановленного периода
+      ...(value !== 'custom' && { startDate: '', endDate: '' })
+    });
+  };
+
+  const handleTypeChange = (value: typeof filters.type) => {
+    handleFiltersChange({
+      ...filters,
+      type: value
+    });
+  };
+
+  const handleCategoryChange = (value: string) => {
+    handleFiltersChange({
+      ...filters,
+      categoryId: value
+    });
+  };
+
+  const handleUserChange = (value: string) => {
+    handleFiltersChange({
+      ...filters,
+      userId: value
+    });
+  };
+
+  const handleCustomDateChange = (startDate: string, endDate: string) => {
+    handleFiltersChange({
+      ...filters,
+      startDate,
+      endDate
+    });
+  };
+
+  // Обновляем функцию loadData, чтобы она использовала текущие фильтры
   const loadData = useCallback(async (reset = false) => {
     console.log('loadData called with reset:', reset, 'currentBudget:', currentBudget?.id);
     
@@ -126,7 +220,13 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
       const [trans, cats] = await Promise.all([
         mockApi.getTransactionsByBudgetId(currentBudget.id, {
           page: reset ? 1 : page,
-          limit: ITEMS_PER_PAGE
+          limit: ITEMS_PER_PAGE,
+          dateRange: filters.dateRange,
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+          type: filters.type,
+          categoryId: filters.categoryId,
+          userId: filters.userId
         }),
         mockApi.getCategoriesByBudgetId(currentBudget.id),
       ]);
@@ -156,7 +256,7 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
       setIsLoadingMore(false);
       isInitialLoad.current = false;
     }
-  }, [currentBudget, page, isLoading, hasMore]);
+  }, [currentBudget, page, isLoading, hasMore, filters]);
 
   // Экспортируем loadData через ref
   useImperativeHandle(ref, () => ({
@@ -247,6 +347,51 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
     }
   };
 
+  // Добавляем функцию для отображения текущего периода
+  const getCurrentPeriodLabel = useCallback(() => {
+    const now = new Date();
+    switch (filters.dateRange) {
+      case 'thisWeek': {
+        const start = startOfWeek(now, { weekStartsOn: 1 });
+        const end = endOfWeek(now, { weekStartsOn: 1 });
+        return `${format(start, 'd MMM', { locale: ru })} - ${format(end, 'd MMM', { locale: ru })}`;
+      }
+      case 'lastWeek': {
+        const lastWeek = subWeeks(now, 1);
+        const start = startOfWeek(lastWeek, { weekStartsOn: 1 });
+        const end = endOfWeek(lastWeek, { weekStartsOn: 1 });
+        return `${format(start, 'd MMM', { locale: ru })} - ${format(end, 'd MMM', { locale: ru })}`;
+      }
+      case 'thisMonth': {
+        const start = startOfMonth(now);
+        const end = endOfMonth(now);
+        return `${format(start, 'd MMM', { locale: ru })} - ${format(end, 'd MMM', { locale: ru })}`;
+      }
+      case 'lastMonth': {
+        const lastMonth = subMonths(now, 1);
+        const start = startOfMonth(lastMonth);
+        const end = endOfMonth(lastMonth);
+        return `${format(start, 'd MMM', { locale: ru })} - ${format(end, 'd MMM', { locale: ru })}`;
+      }
+      case 'custom':
+        if (!filters.startDate || !filters.endDate) return 'Произвольный период';
+        const start = new Date(filters.startDate);
+        const end = new Date(filters.endDate);
+        return `${format(start, 'd MMM', { locale: ru })} - ${format(end, 'd MMM', { locale: ru })}`;
+      default:
+        return 'Все время';
+    }
+  }, [filters.dateRange, filters.startDate, filters.endDate]);
+
+  // Получаем уникальных пользователей из транзакций
+  const uniqueUsers = useMemo(() => {
+    const users = new Map<string, WebAppUser>();
+    transactions.forEach(transaction => {
+      users.set(transaction.author.id.toString(), transaction.author);
+    });
+    return Array.from(users.values());
+  }, [transactions]);
+
   if (!currentBudget) {
     // Ничего не показываем, если бюджет не выбран
     return null;
@@ -260,6 +405,133 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
           <PlusCircle className="mr-1 h-4 w-4" />
           Добавить
         </HapticButton>
+      </div>
+
+      {/* Кнопка фильтров */}
+      <div className="mb-4">
+        <HapticButton
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+        >
+          <div className="flex items-center">
+            <Filter className="mr-2 h-4 w-4" />
+            <span>Фильтры</span>
+            {filters.dateRange !== 'all' && (
+              <span className="ml-2 text-sm text-muted-foreground">
+                {getCurrentPeriodLabel()}
+              </span>
+            )}
+          </div>
+          <ChevronDown className={cn("h-4 w-4 transition-transform", isFiltersOpen && "rotate-180")} />
+        </HapticButton>
+
+        {/* Выпадающий список фильтров */}
+        {isFiltersOpen && (
+          <div className="mt-2 space-y-4 rounded-lg border bg-card p-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Период</label>
+              <Select
+                value={filters.dateRange}
+                onValueChange={handleDateRangeChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Выберите период" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все время</SelectItem>
+                  <SelectItem value="thisWeek">За эту неделю</SelectItem>
+                  <SelectItem value="lastWeek">За прошлую неделю</SelectItem>
+                  <SelectItem value="thisMonth">За этот месяц</SelectItem>
+                  <SelectItem value="lastMonth">За прошлый месяц</SelectItem>
+                  <SelectItem value="custom">Произвольный период</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {filters.dateRange === 'custom' && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="startDate" className="text-xs">От</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={filters.startDate}
+                      onChange={(e) => handleCustomDateChange(e.target.value, filters.endDate)}
+                      max={filters.endDate || undefined}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="endDate" className="text-xs">До</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={filters.endDate}
+                      onChange={(e) => handleCustomDateChange(filters.startDate, e.target.value)}
+                      min={filters.startDate || undefined}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Тип транзакции</label>
+              <Select
+                value={filters.type}
+                onValueChange={handleTypeChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Выберите тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все типы</SelectItem>
+                  <SelectItem value="expense">Расходы</SelectItem>
+                  <SelectItem value="income">Доходы</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Категория</label>
+              <Select
+                value={filters.categoryId}
+                onValueChange={handleCategoryChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Выберите категорию" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все категории</SelectItem>
+                  {categories.map(category => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Пользователь</label>
+              <Select
+                value={filters.userId}
+                onValueChange={handleUserChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Выберите пользователя" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все пользователи</SelectItem>
+                  {uniqueUsers.map(user => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.first_name} {user.last_name || ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">

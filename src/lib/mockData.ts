@@ -1,6 +1,7 @@
 import { Budget, Category, Transaction, TransactionType, WebAppUser } from '@/types';
 import { generateId } from './utils';
 import { TransactionFormData } from '@/components/features/transaction/TransactionForm.tsx'; // Предполагаем, что утилита для генерации ID будет создана
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths, isWithinInterval } from 'date-fns';
 
 // --- Начальные Моковые Данные ---
 
@@ -16,7 +17,12 @@ const mockUser: Pick<WebAppUser, 'id' | 'first_name' | 'last_name' | 'username'>
 const getRandomDate = () => {
   const now = new Date();
   const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-  return new Date(threeMonthsAgo.getTime() + Math.random() * (now.getTime() - threeMonthsAgo.getTime()));
+  const randomDate = new Date(threeMonthsAgo.getTime() + Math.random() * (now.getTime() - threeMonthsAgo.getTime()));
+  // Устанавливаем случайное время в течение дня
+  randomDate.setHours(Math.floor(Math.random() * 24));
+  randomDate.setMinutes(Math.floor(Math.random() * 60));
+  randomDate.setSeconds(Math.floor(Math.random() * 60));
+  return randomDate;
 };
 
 // Функция для генерации случайной суммы
@@ -265,20 +271,123 @@ export const deleteCategory = async (categoryId: string): Promise<boolean> => {
 // == Транзакции ==
 export const getTransactionsByBudgetId = async (
   budgetId: string,
-  options?: { page?: number; limit?: number }
+  options?: { 
+    page?: number; 
+    limit?: number;
+    dateRange?: 'all' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom';
+    startDate?: string;
+    endDate?: string;
+    type?: 'all' | 'expense' | 'income';
+    categoryId?: string;
+    userId?: string;
+  }
 ): Promise<Transaction[]> => {
   await fakeNetworkDelay();
   console.log('Mock API: getTransactionsByBudgetId called for', budgetId, 'with options:', options);
   if (!budgetId) return [];
   
-  const { page = 1, limit = 10 } = options || {};
+  const { 
+    page = 1, 
+    limit = 10,
+    dateRange = 'all',
+    startDate,
+    endDate,
+    type = 'all',
+    categoryId = 'all',
+    userId = 'all'
+  } = options || {};
+
+  // Получаем базовый список транзакций для бюджета
+  let filteredTransactions = transactions.filter((t) => t.budgetId === budgetId);
+
+  // Функция для получения интервала дат
+  const getDateInterval = (range: typeof dateRange) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Устанавливаем начало дня
+
+    switch (range) {
+      case 'thisWeek': {
+        const start = startOfWeek(now, { weekStartsOn: 1 });
+        const end = endOfWeek(now, { weekStartsOn: 1 });
+        return {
+          start: new Date(start.setHours(0, 0, 0, 0)),
+          end: new Date(end.setHours(23, 59, 59, 999))
+        };
+      }
+      case 'lastWeek': {
+        const lastWeek = subWeeks(now, 1);
+        const start = startOfWeek(lastWeek, { weekStartsOn: 1 });
+        const end = endOfWeek(lastWeek, { weekStartsOn: 1 });
+        return {
+          start: new Date(start.setHours(0, 0, 0, 0)),
+          end: new Date(end.setHours(23, 59, 59, 999))
+        };
+      }
+      case 'thisMonth': {
+        const start = startOfMonth(now);
+        const end = endOfMonth(now);
+        return {
+          start: new Date(start.setHours(0, 0, 0, 0)),
+          end: new Date(end.setHours(23, 59, 59, 999))
+        };
+      }
+      case 'lastMonth': {
+        const lastMonth = subMonths(now, 1);
+        const start = startOfMonth(lastMonth);
+        const end = endOfMonth(lastMonth);
+        return {
+          start: new Date(start.setHours(0, 0, 0, 0)),
+          end: new Date(end.setHours(23, 59, 59, 999))
+        };
+      }
+      case 'custom':
+        if (!startDate || !endDate) return null;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        return {
+          start: new Date(start.setHours(0, 0, 0, 0)),
+          end: new Date(end.setHours(23, 59, 59, 999))
+        };
+      default:
+        return null;
+    }
+  };
+
+  // Применяем фильтры последовательно
+  const filters = [
+    // Фильтр по типу
+    (t: Transaction) => type === 'all' || t.type === type,
+    
+    // Фильтр по категории
+    (t: Transaction) => categoryId === 'all' || t.categoryId === categoryId,
+    
+    // Фильтр по пользователю
+    (t: Transaction) => userId === 'all' || t.author.id.toString() === userId,
+    
+    // Фильтр по дате
+    (t: Transaction) => {
+      if (dateRange === 'all') return true;
+      
+      const interval = getDateInterval(dateRange);
+      if (!interval) return true;
+
+      const transactionDate = new Date(t.createdAt);
+      transactionDate.setHours(0, 0, 0, 0); // Нормализуем время транзакции
+
+      return isWithinInterval(transactionDate, interval);
+    }
+  ];
+
+  // Применяем все фильтры
+  filteredTransactions = filteredTransactions.filter(transaction => 
+    filters.every(filter => filter(transaction))
+  );
+
+  // Сортируем по дате, самые новые сверху
+  filteredTransactions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
-  
-  // Сортируем по дате, самые новые сверху
-  const filteredTransactions = transactions
-    .filter((t) => t.budgetId === budgetId)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   
   console.log('Mock API: Found transactions:', {
     total: filteredTransactions.length,
@@ -286,7 +395,9 @@ export const getTransactionsByBudgetId = async (
     limit,
     startIndex,
     endIndex,
-    willReturn: filteredTransactions.slice(startIndex, endIndex).length
+    willReturn: filteredTransactions.slice(startIndex, endIndex).length,
+    dateRange,
+    dateInterval: getDateInterval(dateRange)
   });
 
   return filteredTransactions
