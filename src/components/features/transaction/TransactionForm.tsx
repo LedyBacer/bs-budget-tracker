@@ -27,6 +27,7 @@ import { Category, Transaction, TransactionType, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { useLaunchParams } from '@telegram-apps/sdk-react';
 import { popup } from '@telegram-apps/sdk-react'; // Импортируем popup для уведомлений
+import { Plus, Minus } from 'lucide-react';
 
 // --- Схема валидации Zod для транзакции ---
 const transactionSchema = z.object({
@@ -263,49 +264,35 @@ export function TransactionForm({
             {/* --- Тип транзакции (с Controller) --- */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Тип</Label>
-              <div className="col-span-3">
+              <div className="col-span-3 flex w-full gap-2 justify-between">
                 <Controller
                   control={control}
                   name="type"
                   render={({ field }) => (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value} // Используем field.value
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger className={errors.type ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Выберите тип..." />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        <SelectItem value="expense">Списание (Расход)</SelectItem>
-                        <SelectItem value="income">Пополнение (Доход)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <>
+                      <HapticButton
+                        type="button"
+                        variant={field.value === 'income' ? 'default' : 'outline'}
+                        className="max-w-[107px] flex-1 flex items-center justify-center"
+                        onClick={() => field.onChange('income')}
+                        disabled={isSubmitting}
+                      >
+                        <Plus className="h-4 w-4 text-green-500" />
+                      </HapticButton>
+                      <HapticButton
+                        type="button"
+                        variant={field.value === 'expense' ? 'default' : 'outline'}
+                        className="max-w-[107px] flex-1 flex items-center justify-center"
+                        onClick={() => field.onChange('expense')}
+                        disabled={isSubmitting}
+                      >
+                        <Minus className="h-4 w-4 text-red-500" />
+                      </HapticButton>
+                    </>
                   )}
                 />
                 {errors.type && (
                   <p className="text-destructive mt-1 text-xs">{errors.type.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* --- Сумма --- */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
-                Сумма (₽)
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  placeholder="Например, 1500.50"
-                  {...register('amount')} // Оставляем register для простых инпутов
-                  className={errors.amount ? 'border-destructive' : ''}
-                  disabled={isSubmitting}
-                />
-                {errors.amount && (
-                  <p className="text-destructive mt-1 text-xs">{errors.amount.message}</p>
                 )}
               </div>
             </div>
@@ -358,6 +345,27 @@ export function TransactionForm({
               </div>
             </div>
 
+            {/* --- Сумма --- */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right whitespace-nowrap">
+                Сумма, ₽
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="Например, 1500.50"
+                  {...register('amount')} // Оставляем register для простых инпутов
+                  className={errors.amount ? 'border-destructive' : ''}
+                  disabled={isSubmitting}
+                />
+                {errors.amount && (
+                  <p className="text-destructive mt-1 text-xs">{errors.amount.message}</p>
+                )}
+              </div>
+            </div>
+
             {/* --- Дата и время (с Controller) --- */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="createdAt" className="text-right">
@@ -405,14 +413,15 @@ export function TransactionForm({
 
             {/* --- Название (опционально) --- */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Название <span className="text-muted-foreground text-xs">(опц.)</span>
+              <Label htmlFor="name" className="text-right flex flex-col items-end">
+                <span>Название</span>
+                <span className="text-muted-foreground text-xs">(опц.)</span>
               </Label>
               <div className="col-span-3">
                 <Input
                   id="name"
                   placeholder="Например, 'Обед в кафе'"
-                  {...register('name')} // register подходит для простых инпутов
+                  {...register('name')}
                   disabled={isSubmitting}
                 />
               </div>
@@ -420,14 +429,15 @@ export function TransactionForm({
 
             {/* --- Комментарий (опционально) --- */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="comment" className="text-right">
-                Комментарий <span className="text-muted-foreground text-xs">(опц.)</span>
+              <Label htmlFor="comment" className="text-right flex flex-col items-end">
+                <span>Заметка</span>
+                <span className="text-muted-foreground text-xs">(опц.)</span>
               </Label>
               <div className="col-span-3">
                 <Textarea
                   id="comment"
-                  placeholder="Дополнительная информация..."
-                  {...register('comment')} // register для textarea
+                  placeholder="Дополнительная информация о транзакции..."
+                  {...register('comment')}
                   disabled={isSubmitting}
                   rows={2}
                 />
