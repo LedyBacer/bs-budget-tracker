@@ -26,6 +26,7 @@ import * as mockApi from '@/lib/mockData';
 import { useLaunchParams } from '@telegram-apps/sdk-react';
 import { useScrollToInput } from '@/hooks/useScrollToInput';
 import { formatNumberWithSpaces, parseFormattedNumber } from '@/lib/utils';
+import { useBudgets } from '@/contexts/BudgetContext';
 
 // Упрощённая схема валидации
 const simpleTransactionSchema = z.object({
@@ -56,6 +57,7 @@ export function SimpleTransactionForm({
   onTransactionSaved,
 }: SimpleTransactionFormProps) {
   useScrollToInput({ isOpen: open });
+  const { reloadBudgets } = useBudgets();
   const launchParams = useLaunchParams();
   const currentUser =
     launchParams.tgWebAppData &&
@@ -144,6 +146,7 @@ export function SimpleTransactionForm({
         new Date() // Текущая дата и время
       );
       onTransactionSaved();
+      await reloadBudgets(); // Перезагружаем данные бюджета
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save transaction:', error);
