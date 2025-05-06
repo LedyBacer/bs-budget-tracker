@@ -173,7 +173,7 @@ export function SimpleTransactionForm({
                         onClick={() => field.onChange('income')}
                         disabled={isSubmitting}
                       >
-                        <Plus className="h-4 w-4 text-green-500" />
+                        <Plus className={`h-4 w-4 ${field.value === 'income' ? 'text-white' : 'text-primary'}`} />
                       </HapticButton>
                       <HapticButton
                         type="button"
@@ -182,7 +182,7 @@ export function SimpleTransactionForm({
                         onClick={() => field.onChange('expense')}
                         disabled={isSubmitting}
                       >
-                        <Minus className="h-4 w-4 text-red-500" />
+                        <Minus className={`h-4 w-4 ${field.value === 'expense' ? 'text-white' : 'text-primary'}`} />
                       </HapticButton>
                     </>
                   )}
