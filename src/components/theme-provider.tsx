@@ -92,7 +92,28 @@ export function ThemeProvider({
         applyColor(secondaryBackgroundColor, '--popover');
         applyColor(secondaryBackgroundColor, '--muted');
         applyColor(backgroundColor, '--border');
-        applyColor(backgroundColor, '--input');
+        
+        // Определяем, темная ли тема
+        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        // Затемняем поля ввода
+        const inputBackground = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+        root.style.setProperty('--input', inputBackground);
+        if (textColor) {
+          root.style.setProperty('--input-foreground', textColor);
+        }
+        
+        // Затемняем выпадающие списки и меню
+        root.style.setProperty('--select-background', inputBackground);
+        if (textColor) {
+          root.style.setProperty('--select-foreground', textColor);
+        }
+        
+        // Затемняем чекбоксы и радио-кнопки
+        root.style.setProperty('--checkbox-background', inputBackground);
+        if (textColor) {
+          root.style.setProperty('--checkbox-foreground', textColor);
+        }
         
         applyColor(textColor, '--foreground');
         applyColor(textColor, '--card-foreground');
@@ -113,8 +134,6 @@ export function ThemeProvider({
         applyColor(accentTextColor, '--accent');
 
         // Применяем дополнительные цвета для темной/светлой темы
-        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        
         if (isDark) {
           // Дополнительные цвета для темной темы
           root.style.setProperty('--destructive-foreground', '#ffffff');

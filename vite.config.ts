@@ -14,6 +14,6 @@ export default defineConfig({
   // Не забудь поле base, если будешь деплоить на GitHub Pages
   // base: '/bs-budget-tracker/',
   server: {
-    allowedHosts: ['5362-77-238-245-29.ngrok-free.app'],
+    allowedHosts: ['34d8-77-238-245-29.ngrok-free.app'],
   },
 });

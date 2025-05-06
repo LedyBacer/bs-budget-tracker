@@ -385,17 +385,14 @@ export function TransactionForm({
                             field.onChange(undefined); // Или null, если нужно
                           } else {
                             console.warn('Invalid date input detected:', e.target.value);
-                            // Можно установить ошибку вручную, если Zod не справляется
-                            // setError('createdAt', { type: 'manual', message: 'Неверный формат даты' });
                           }
                         } catch (error) {
                           console.error('Error parsing date input:', e.target.value, error);
-                          // Возможно, также стоит установить ошибку
                         }
                       }}
-                      onBlur={field.onBlur} // Важно передать onBlur для валидации Zod
-                      ref={field.ref} // Передаем ref
-                      className={errors.createdAt ? 'border-destructive' : ''}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className={`${errors.createdAt ? 'border-destructive' : ''} [&::-webkit-calendar-picker-indicator]:bg-[var(--primary)] [&::-webkit-calendar-picker-indicator]:p-1 [&::-webkit-calendar-picker-indicator]:rounded [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-80 [&::-webkit-datetime-edit]:text-[var(--foreground)] [&::-webkit-datetime-edit-fields-wrapper]:text-[var(--foreground)] [&::-webkit-datetime-edit-text]:text-[var(--foreground)] [&::-webkit-datetime-edit-month-field]:text-[var(--foreground)] [&::-webkit-datetime-edit-day-field]:text-[var(--foreground)] [&::-webkit-datetime-edit-year-field]:text-[var(--foreground)] [&::-webkit-datetime-edit-hour-field]:text-[var(--foreground)] [&::-webkit-datetime-edit-minute-field]:text-[var(--foreground)] [&::-webkit-datetime-edit-ampm-field]:text-[var(--foreground)]`}
                       disabled={isSubmitting}
                     />
                   )}
