@@ -1,5 +1,6 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
+import { hapticFeedback } from "@telegram-apps/sdk"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -11,10 +12,27 @@ function AlertDialog({
 }
 
 function AlertDialogTrigger({
+  onClick,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Trigger>) {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Проверяем поддержку и доступность функции
+    if (hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+
+    // Вызываем оригинальный обработчик onClick, если он был передан
+    if (onClick) {
+      onClick(event);
+    }
+  };
+
   return (
-    <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />
+    <AlertDialogPrimitive.Trigger 
+      data-slot="alert-dialog-trigger" 
+      onClick={handleClick} 
+      {...props} 
+    />
   )
 }
 
@@ -118,11 +136,25 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  onClick,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Проверяем поддержку и доступность функции
+    if (hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+
+    // Вызываем оригинальный обработчик onClick, если он был передан
+    if (onClick) {
+      onClick(event);
+    }
+  };
+
   return (
     <AlertDialogPrimitive.Action
       className={cn(buttonVariants(), className)}
+      onClick={handleClick}
       {...props}
     />
   )
@@ -130,11 +162,25 @@ function AlertDialogAction({
 
 function AlertDialogCancel({
   className,
+  onClick,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Проверяем поддержку и доступность функции
+    if (hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+
+    // Вызываем оригинальный обработчик onClick, если он был передан
+    if (onClick) {
+      onClick(event);
+    }
+  };
+
   return (
     <AlertDialogPrimitive.Cancel
       className={cn(buttonVariants({ variant: "outline" }), className)}
+      onClick={handleClick}
       {...props}
     />
   )

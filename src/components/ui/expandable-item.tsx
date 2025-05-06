@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { hapticFeedback } from '@telegram-apps/sdk';
 
 interface ExpandableItemProps {
   children: React.ReactNode;
@@ -18,6 +19,16 @@ export function ExpandableItem({
 }: ExpandableItemProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const handleClick = () => {
+    // Проверяем поддержку и доступность функции
+    if (hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+
+    // Вызываем оригинальный обработчик onClick
+    onToggle();
+  };
+
   return (
     <div
       className={cn(
@@ -27,7 +38,7 @@ export function ExpandableItem({
     >
       <div
         ref={containerRef}
-        onClick={onToggle}
+        onClick={handleClick}
         className="cursor-pointer"
       >
         {children}

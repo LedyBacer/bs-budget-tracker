@@ -1,6 +1,7 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
+import { hapticFeedback } from "@telegram-apps/sdk"
 
 import { cn } from "@/lib/utils"
 
@@ -11,9 +12,22 @@ function Dialog({
 }
 
 function DialogTrigger({
+  onClick,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Проверяем поддержку и доступность функции
+    if (hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+
+    // Вызываем оригинальный обработчик onClick, если он был передан
+    if (onClick) {
+      onClick(event);
+    }
+  };
+
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" onClick={handleClick} {...props} />
 }
 
 function DialogPortal({
@@ -23,9 +37,22 @@ function DialogPortal({
 }
 
 function DialogClose({
+  onClick,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Проверяем поддержку и доступность функции
+    if (hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+
+    // Вызываем оригинальный обработчик onClick, если он был передан
+    if (onClick) {
+      onClick(event);
+    }
+  };
+
+  return <DialogPrimitive.Close data-slot="dialog-close" onClick={handleClick} {...props} />
 }
 
 function DialogOverlay({
@@ -61,7 +88,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer">
           <XIcon />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

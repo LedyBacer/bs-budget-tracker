@@ -6,6 +6,7 @@ import { PlusCircle, ChevronDown } from 'lucide-react';
 import { BudgetForm } from './BudgetForm';
 import { Budget } from '@/types';
 import { HapticButton } from '@/components/ui/haptic-button';
+import { hapticFeedback } from '@telegram-apps/sdk';
 
 function formatError(error: unknown): string {
   if (error instanceof Error) {
@@ -35,6 +36,14 @@ export function BudgetList() {
     setIsFormOpen(true);
   };
 
+  const handleTitleClick = () => {
+    if (hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+    
+    setIsListExpanded(!isListExpanded);
+  };
+
   if (isLoadingBudgets) {
     return <div className="text-muted-foreground p-4 text-center">Загрузка бюджетов...</div>;
   }
@@ -56,7 +65,7 @@ export function BudgetList() {
       <div className="mb-2 flex items-center justify-between px-1">
         <div 
           className="flex items-center gap-2 cursor-pointer" 
-          onClick={() => setIsListExpanded(!isListExpanded)}
+          onClick={handleTitleClick}
         >
           <h3 className="text-md font-semibold">
             {isListExpanded ? "Бюджеты:" : "Бюджет:"}
