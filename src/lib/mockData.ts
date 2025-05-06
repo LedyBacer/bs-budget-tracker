@@ -1,7 +1,16 @@
 import { Budget, Category, Transaction, TransactionType, WebAppUser } from '@/types';
 import { generateId } from './utils';
-import { TransactionFormData } from '@/components/features/transaction/TransactionForm.tsx'; // Предполагаем, что утилита для генерации ID будет создана
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths, isWithinInterval } from 'date-fns';
+
+// Определение типа для данных формы транзакции
+export interface TransactionFormData {
+  name?: string;
+  type: TransactionType;
+  amount: number;
+  categoryId: string;
+  comment?: string;
+  createdAt?: Date;
+}
 
 // --- Начальные Моковые Данные ---
 

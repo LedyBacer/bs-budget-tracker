@@ -38,316 +38,70 @@ interface TransactionWithCategoryName extends Transaction {
   categoryName?: string;
 }
 
-export interface TransactionListRef {
+interface TransactionListRef {
   loadData: () => Promise<void>;
 }
 
-export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
-  const { currentBudget } = useBudgets();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
-  const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const { ref: loadMoreRef, inView } = useInView();
-  const ITEMS_PER_PAGE = 10;
-  const isInitialLoad = useRef(true);
+interface Filters {
+  dateRange: 'all' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom';
+  startDate: string;
+  endDate: string;
+  userId: string;
+  type: 'all' | 'expense' | 'income';
+  categoryId: string;
+}
 
-  // Добавляем состояние для фильтров
-  const [filters, setFilters] = useState({
-    dateRange: 'all' as 'all' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom',
-    startDate: '',
-    endDate: '',
-    userId: 'all' as string,
-    type: 'all' as 'all' | 'expense' | 'income',
-    categoryId: 'all' as string,
-  });
+// Компонент фильтров
+const TransactionFilters = ({ 
+  filters, 
+  onFiltersChange, 
+  categories, 
+  uniqueUsers 
+}: { 
+  filters: Filters;
+  onFiltersChange: (filters: Filters) => void;
+  categories: Category[];
+  uniqueUsers: WebAppUser[];
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Добавляем состояние для открытия/закрытия фильтров
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-
-  // --- ЛОГ МОНТИРОВАНИЯ/РАЗМОНТИРОВАНИЯ ---
-  useEffect(() => {
-    console.log(`TransactionList MOUNTED for budget: ${currentBudget?.id}`);
-    return () => {
-      console.log(`TransactionList UNMOUNTED for budget: ${currentBudget?.id}`);
-    };
-  }, [currentBudget]); // Зависимость от currentBudget покажет пересоздание при его смене
-  // --- КОНЕЦ ЛОГА ---
-
-  // Функция для форматирования даты заголовка группы
-  const getGroupDateTitle = (date: Date): string => {
-    if (isToday(date)) return 'Сегодня';
-    if (isYesterday(date)) return 'Вчера';
-    if (differenceInDays(new Date(), date) === 2) return 'Позавчера';
-    if (isThisYear(date)) {
-      return format(date, 'd MMMM', { locale: ru });
-    }
-    return format(date, 'd MMMM yyyy', { locale: ru });
-  };
-
-  // Группировка транзакций по датам
-  const groupedTransactions = useMemo(() => {
-    console.log('Grouping transactions:', transactions.length);
-    const groups: { [key: string]: TransactionWithCategoryName[] } = {};
-    
-    transactions.forEach(transaction => {
-      const date = new Date(transaction.createdAt);
-      const groupKey = format(date, 'yyyy-MM-dd');
-      
-      if (!groups[groupKey]) {
-        groups[groupKey] = [];
-      }
-      groups[groupKey].push({
-        ...transaction,
-        categoryName: categories.find(c => c.id === transaction.categoryId)?.name || 'Без категории',
-      });
-    });
-
-    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
-  }, [transactions, categories]);
-
-  // Добавляем обработчик изменения фильтров
-  const handleFiltersChange = useCallback(async (newFilters: typeof filters) => {
-    setFilters(newFilters);
-    setPage(1);
-    setTransactions([]);
-    setHasMore(true);
-    setIsLoading(true);
-    
-    try {
-      const [trans, cats] = await Promise.all([
-        mockApi.getTransactionsByBudgetId(currentBudget!.id, {
-          page: 1,
-          limit: ITEMS_PER_PAGE,
-          dateRange: newFilters.dateRange,
-          startDate: newFilters.startDate,
-          endDate: newFilters.endDate,
-          type: newFilters.type,
-          categoryId: newFilters.categoryId,
-          userId: newFilters.userId
-        }),
-        mockApi.getCategoriesByBudgetId(currentBudget!.id),
-      ]);
-
-      setTransactions(trans);
-      setCategories(cats);
-      setHasMore(trans.length === ITEMS_PER_PAGE);
-    } catch (error) {
-      console.error('Failed to load transactions/categories:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentBudget]);
-
-  // Обновляем обработчики изменения фильтров
-  const handleDateRangeChange = (value: typeof filters.dateRange) => {
-    handleFiltersChange({
+  const handleDateRangeChange = (value: Filters['dateRange']) => {
+    onFiltersChange({
       ...filters,
       dateRange: value,
-      // Сбрасываем даты при выборе предустановленного периода
       ...(value !== 'custom' && { startDate: '', endDate: '' })
     });
   };
 
-  const handleTypeChange = (value: typeof filters.type) => {
-    handleFiltersChange({
+  const handleTypeChange = (value: Filters['type']) => {
+    onFiltersChange({
       ...filters,
       type: value
     });
   };
 
   const handleCategoryChange = (value: string) => {
-    handleFiltersChange({
+    onFiltersChange({
       ...filters,
       categoryId: value
     });
   };
 
   const handleUserChange = (value: string) => {
-    handleFiltersChange({
+    onFiltersChange({
       ...filters,
       userId: value
     });
   };
 
   const handleCustomDateChange = (startDate: string, endDate: string) => {
-    handleFiltersChange({
+    onFiltersChange({
       ...filters,
       startDate,
       endDate
     });
   };
 
-  // Обновляем функцию loadData, чтобы она использовала текущие фильтры
-  const loadData = useCallback(async (reset = false) => {
-    console.log('loadData called with reset:', reset, 'currentBudget:', currentBudget?.id);
-    
-    if (!currentBudget) {
-      console.log('No current budget, returning');
-      return;
-    }
-    
-    if (reset) {
-      console.log('Resetting state');
-      setPage(1);
-      setTransactions([]);
-      setHasMore(true);
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    if (isLoading && !reset) {
-      console.log('Already loading, returning');
-      return;
-    }
-
-    if (!reset && !hasMore) {
-      console.log('No more data to load, returning');
-      return;
-    }
-
-    console.log('Starting data load, page:', reset ? 1 : page);
-    
-    try {
-      const [trans, cats] = await Promise.all([
-        mockApi.getTransactionsByBudgetId(currentBudget.id, {
-          page: reset ? 1 : page,
-          limit: ITEMS_PER_PAGE,
-          dateRange: filters.dateRange,
-          startDate: filters.startDate,
-          endDate: filters.endDate,
-          type: filters.type,
-          categoryId: filters.categoryId,
-          userId: filters.userId
-        }),
-        mockApi.getCategoriesByBudgetId(currentBudget.id),
-      ]);
-
-      console.log('Data loaded:', {
-        transactionsCount: trans.length,
-        categoriesCount: cats.length,
-        hasMore: trans.length === ITEMS_PER_PAGE
-      });
-
-      if (reset) {
-        setTransactions(trans);
-      } else {
-        setTransactions(prev => [...prev, ...trans]);
-      }
-      
-      setCategories(cats);
-      setHasMore(trans.length === ITEMS_PER_PAGE);
-      
-      if (!reset) {
-        setPage(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('Failed to load transactions/categories:', error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-      isInitialLoad.current = false;
-    }
-  }, [currentBudget, page, isLoading, hasMore, filters]);
-
-  // Экспортируем loadData через ref
-  useImperativeHandle(ref, () => ({
-    loadData: () => {
-      console.log('loadData called via ref');
-      return loadData(true);
-    },
-  }), [loadData]);
-
-  // Эффект для загрузки следующей страницы при скролле
-  useEffect(() => {
-    if (!isInitialLoad.current && inView && hasMore && !isLoading) {
-      console.log('Loading next page');
-      loadData();
-    }
-  }, [inView, hasMore, isLoading, loadData]);
-
-  // Эффект для начальной загрузки
-  useEffect(() => {
-    if (currentBudget && isInitialLoad.current) {
-      console.log('Initial load');
-      loadData(true);
-    }
-  }, [currentBudget, loadData]);
-
-  // Открытие формы добавления
-  const handleAddTransaction = () => {
-    console.log('TransactionList: handleAddTransaction called'); // <-- ЛОГ 1
-    setTransactionToEdit(null);
-    setIsFormOpen(true); // <-- Установка состояния
-    console.log('TransactionList: isFormOpen should be true now'); // <-- ЛОГ 2
-  };
-
-  // Открытие формы редактирования (передаем транзакцию)
-  const handleEditTransaction = (transaction: Transaction) => {
-    console.log('TransactionList: handleEditTransaction called for', transaction.id);
-    setTransactionToEdit(transaction);
-    setIsFormOpen(true);
-  };
-
-  // Колбэк после сохранения
-  const handleTransactionSaved = () => {
-    console.log('TransactionList: handleTransactionSaved called');
-    loadData(true); // Сбрасываем список и загружаем заново
-  };
-
-  console.log(
-    'TransactionList: Rendering. isFormOpen:',
-    isFormOpen,
-    'currentBudget:',
-    currentBudget?.id
-  ); // Лог 3
-
-  // Добавляем имена категорий к транзакциям для удобного отображения
-  const transactionsWithDetails: TransactionWithCategoryName[] = useMemo(() => {
-    const categoryMap = new Map(categories.map((cat) => [cat.id, cat.name]));
-    return transactions.map((t) => ({
-      ...t,
-      categoryName: categoryMap.get(t.categoryId) || 'Без категории', // Имя категории или заглушка
-    }));
-  }, [transactions, categories]);
-
-  // Функция для переключения раскрытого элемента
-  const handleToggleExpand = (transactionId: string) => {
-    mediumHaptic();
-    setExpandedTransactionId((prevId) => (prevId === transactionId ? null : transactionId));
-  };
-
-  // Функция для удаления транзакции
-  const handleDeleteTransaction = async (transaction: Transaction, event: React.MouseEvent) => {
-    event.stopPropagation();
-    setTransactionToDelete(transaction);
-  };
-
-  // Финальное удаление после подтверждения в AlertDialog
-  const handleConfirmDelete = async () => {
-    if (!transactionToDelete) return;
-    setIsDeleting(true);
-    try {
-      await mockApi.deleteTransaction(transactionToDelete.id);
-      await loadData();
-    } catch (error) {
-      console.error('Failed to delete transaction:', error);
-      // TODO: Показать ошибку пользователю
-    } finally {
-      setIsDeleting(false);
-      setTransactionToDelete(null);
-    }
-  };
-
-  // Добавляем функцию для отображения текущего периода
   const getCurrentPeriodLabel = useCallback(() => {
     const now = new Date();
     switch (filters.dateRange) {
@@ -383,7 +137,441 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
     }
   }, [filters.dateRange, filters.startDate, filters.endDate]);
 
-  // Получаем уникальных пользователей из транзакций
+  return (
+    <div className="mb-4">
+      <HapticButton
+        variant="outline"
+        className="w-full justify-between"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center">
+          <Filter className="mr-2 h-4 w-4" />
+          <span>Фильтры</span>
+          {filters.dateRange !== 'all' && (
+            <span className="ml-2 text-sm text-muted-foreground">
+              {getCurrentPeriodLabel()}
+            </span>
+          )}
+        </div>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </HapticButton>
+
+      {isOpen && (
+        <div className="mt-2 space-y-4 rounded-lg border bg-card p-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Период</label>
+            <Select
+              value={filters.dateRange}
+              onValueChange={handleDateRangeChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Выберите период" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все время</SelectItem>
+                <SelectItem value="thisWeek">За эту неделю</SelectItem>
+                <SelectItem value="lastWeek">За прошлую неделю</SelectItem>
+                <SelectItem value="thisMonth">За этот месяц</SelectItem>
+                <SelectItem value="lastMonth">За прошлый месяц</SelectItem>
+                <SelectItem value="custom">Произвольный период</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {filters.dateRange === 'custom' && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="startDate" className="text-xs">От</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={filters.startDate}
+                    onChange={(e) => handleCustomDateChange(e.target.value, filters.endDate)}
+                    max={filters.endDate || undefined}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="endDate" className="text-xs">До</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={filters.endDate}
+                    onChange={(e) => handleCustomDateChange(filters.startDate, e.target.value)}
+                    min={filters.startDate || undefined}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Тип транзакции</label>
+            <Select
+              value={filters.type}
+              onValueChange={handleTypeChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Выберите тип" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все типы</SelectItem>
+                <SelectItem value="expense">Расходы</SelectItem>
+                <SelectItem value="income">Доходы</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Категория</label>
+            <Select
+              value={filters.categoryId}
+              onValueChange={handleCategoryChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Выберите категорию" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все категории</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Пользователь</label>
+            <Select
+              value={filters.userId}
+              onValueChange={handleUserChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Выберите пользователя" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все пользователи</SelectItem>
+                {uniqueUsers.map(user => (
+                  <SelectItem key={user.id} value={user.id.toString()}>
+                    {user.first_name} {user.last_name || ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Компонент транзакции
+const TransactionItem = ({ 
+  transaction, 
+  onEdit, 
+  onDelete,
+  transactionToDelete,
+  setTransactionToDelete,
+  handleConfirmDelete
+}: { 
+  transaction: TransactionWithCategoryName;
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => void;
+  transactionToDelete: Transaction | null;
+  setTransactionToDelete: (transaction: Transaction | null) => void;
+  handleConfirmDelete: () => Promise<void>;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleToggleExpand = () => {
+    mediumHaptic();
+    setIsExpanded(!isExpanded);
+  };
+
+  return (
+    <ExpandableItem
+      isExpanded={isExpanded}
+      onToggle={handleToggleExpand}
+      actions={
+        <div className="flex w-full items-stretch gap-2">
+          <AlertDialog
+            open={!!transactionToDelete && transactionToDelete.id === transaction.id}
+            onOpenChange={(open) => !open && setTransactionToDelete(null)}
+          >
+            <AlertDialogTrigger asChild>
+              <HapticButton
+                variant="ghost"
+                size="sm"
+                className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTransactionToDelete(transaction);
+                }}
+                aria-label="Удалить транзакцию"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Удалить
+              </HapticButton>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Удалить транзакцию?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы уверены, что хотите удалить эту транзакцию? Это действие нельзя будет отменить.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setTransactionToDelete(null); }}>
+                  Отмена
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await handleConfirmDelete();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Удалить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <HapticButton
+            variant="ghost"
+            size="sm"
+            className="flex-1 rounded-md border border-border"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(transaction);
+            }}
+            aria-label="Редактировать транзакцию"
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Редактировать
+          </HapticButton>
+        </div>
+      }
+    >
+      <div className="bg-card text-card-foreground group flex items-center justify-between rounded-lg border p-3 text-sm">
+        <div className="flex items-center space-x-3">
+          {transaction.type === 'expense' ? (
+            <ArrowDownCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
+          ) : (
+            <ArrowUpCircle className="h-5 w-5 flex-shrink-0 text-green-500" />
+          )}
+          <div>
+            <div className="font-medium">
+              {transaction.name ||
+                transaction.categoryName ||
+                (transaction.type === 'expense' ? 'Расход' : 'Пополнение')}
+            </div>
+            <div className="text-muted-foreground text-xs">
+              {transaction.categoryName} • {transaction.author.first_name} •{' '}
+              {formatDate(transaction.createdAt, { month: 'short', day: 'numeric' })}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span
+            className={cn(
+              'font-semibold',
+              transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'
+            )}
+          >
+            {transaction.type === 'expense' ? '-' : '+'}
+            {formatCurrency(transaction.amount)}
+          </span>
+        </div>
+      </div>
+    </ExpandableItem>
+  );
+};
+
+// Основной компонент
+export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
+  const { currentBudget } = useBudgets();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const { ref: loadMoreRef, inView } = useInView();
+  const ITEMS_PER_PAGE = 10;
+  const isInitialLoad = useRef(true);
+
+  const [filters, setFilters] = useState<Filters>({
+    dateRange: 'all',
+    startDate: '',
+    endDate: '',
+    userId: 'all',
+    type: 'all',
+    categoryId: 'all',
+  });
+
+  // Функция для форматирования даты заголовка группы
+  const getGroupDateTitle = (date: Date): string => {
+    if (isToday(date)) return 'Сегодня';
+    if (isYesterday(date)) return 'Вчера';
+    if (differenceInDays(new Date(), date) === 2) return 'Позавчера';
+    if (isThisYear(date)) {
+      return format(date, 'd MMMM', { locale: ru });
+    }
+    return format(date, 'd MMMM yyyy', { locale: ru });
+  };
+
+  // Группировка транзакций по датам
+  const groupedTransactions = useMemo(() => {
+    const groups: { [key: string]: TransactionWithCategoryName[] } = {};
+    
+    transactions.forEach(transaction => {
+      const date = new Date(transaction.createdAt);
+      const groupKey = format(date, 'yyyy-MM-dd');
+      
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push({
+        ...transaction,
+        categoryName: categories.find(c => c.id === transaction.categoryId)?.name || 'Без категории',
+      });
+    });
+
+    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
+  }, [transactions, categories]);
+
+  // Обработчик изменения фильтров
+  const handleFiltersChange = useCallback(async (newFilters: Filters) => {
+    setFilters(newFilters);
+    setPage(1);
+    setTransactions([]);
+    setHasMore(true);
+    setIsLoading(true);
+    
+    try {
+      const [trans, cats] = await Promise.all([
+        mockApi.getTransactionsByBudgetId(currentBudget!.id, {
+          page: 1,
+          limit: ITEMS_PER_PAGE,
+          ...newFilters
+        }),
+        mockApi.getCategoriesByBudgetId(currentBudget!.id),
+      ]);
+
+      setTransactions(trans);
+      setCategories(cats);
+      setHasMore(trans.length === ITEMS_PER_PAGE);
+    } catch (error) {
+      console.error('Failed to load transactions/categories:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentBudget]);
+
+  // Функция загрузки данных
+  const loadData = useCallback(async (reset = false) => {
+    if (!currentBudget) return;
+    
+    if (reset) {
+      setPage(1);
+      setTransactions([]);
+      setHasMore(true);
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
+    if (isLoading && !reset) return;
+    if (!reset && !hasMore) return;
+    
+    try {
+      const [trans, cats] = await Promise.all([
+        mockApi.getTransactionsByBudgetId(currentBudget.id, {
+          page: reset ? 1 : page,
+          limit: ITEMS_PER_PAGE,
+          ...filters
+        }),
+        mockApi.getCategoriesByBudgetId(currentBudget.id),
+      ]);
+
+      if (reset) {
+        setTransactions(trans);
+      } else {
+        setTransactions(prev => [...prev, ...trans]);
+      }
+      
+      setCategories(cats);
+      setHasMore(trans.length === ITEMS_PER_PAGE);
+      
+      if (!reset) {
+        setPage(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Failed to load transactions/categories:', error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+      isInitialLoad.current = false;
+    }
+  }, [currentBudget, page, isLoading, hasMore, filters]);
+
+  // Экспорт loadData через ref
+  useImperativeHandle(ref, () => ({
+    loadData: () => loadData(true),
+  }), [loadData]);
+
+  // Эффект для загрузки следующей страницы при скролле
+  useEffect(() => {
+    if (!isInitialLoad.current && inView && hasMore && !isLoading) {
+      loadData();
+    }
+  }, [inView, hasMore, isLoading, loadData]);
+
+  // Эффект для начальной загрузки
+  useEffect(() => {
+    if (currentBudget && isInitialLoad.current) {
+      loadData(true);
+    }
+  }, [currentBudget, loadData]);
+
+  // Обработчики действий
+  const handleAddTransaction = () => {
+    setTransactionToEdit(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setTransactionToEdit(transaction);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteTransaction = async (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!transactionToDelete) return;
+    try {
+      await mockApi.deleteTransaction(transactionToDelete.id);
+      await loadData(true);
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+    } finally {
+      setTransactionToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  const handleTransactionSaved = () => {
+    loadData(true);
+  };
+
+  // Получаем уникальных пользователей
   const uniqueUsers = useMemo(() => {
     const users = new Map<string, WebAppUser>();
     transactions.forEach(transaction => {
@@ -392,10 +580,7 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
     return Array.from(users.values());
   }, [transactions]);
 
-  if (!currentBudget) {
-    // Ничего не показываем, если бюджет не выбран
-    return null;
-  }
+  if (!currentBudget) return null;
 
   return (
     <div className="mb-6" data-transaction-list>
@@ -407,132 +592,12 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
         </HapticButton>
       </div>
 
-      {/* Кнопка фильтров */}
-      <div className="mb-4">
-        <HapticButton
-          variant="outline"
-          className="w-full justify-between"
-          onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-        >
-          <div className="flex items-center">
-            <Filter className="mr-2 h-4 w-4" />
-            <span>Фильтры</span>
-            {filters.dateRange !== 'all' && (
-              <span className="ml-2 text-sm text-muted-foreground">
-                {getCurrentPeriodLabel()}
-              </span>
-            )}
-          </div>
-          <ChevronDown className={cn("h-4 w-4 transition-transform", isFiltersOpen && "rotate-180")} />
-        </HapticButton>
-
-        {/* Выпадающий список фильтров */}
-        {isFiltersOpen && (
-          <div className="mt-2 space-y-4 rounded-lg border bg-card p-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Период</label>
-              <Select
-                value={filters.dateRange}
-                onValueChange={handleDateRangeChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Выберите период" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все время</SelectItem>
-                  <SelectItem value="thisWeek">За эту неделю</SelectItem>
-                  <SelectItem value="lastWeek">За прошлую неделю</SelectItem>
-                  <SelectItem value="thisMonth">За этот месяц</SelectItem>
-                  <SelectItem value="lastMonth">За прошлый месяц</SelectItem>
-                  <SelectItem value="custom">Произвольный период</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {filters.dateRange === 'custom' && (
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="startDate" className="text-xs">От</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={filters.startDate}
-                      onChange={(e) => handleCustomDateChange(e.target.value, filters.endDate)}
-                      max={filters.endDate || undefined}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="endDate" className="text-xs">До</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={filters.endDate}
-                      onChange={(e) => handleCustomDateChange(filters.startDate, e.target.value)}
-                      min={filters.startDate || undefined}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Тип транзакции</label>
-              <Select
-                value={filters.type}
-                onValueChange={handleTypeChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Выберите тип" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все типы</SelectItem>
-                  <SelectItem value="expense">Расходы</SelectItem>
-                  <SelectItem value="income">Доходы</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Категория</label>
-              <Select
-                value={filters.categoryId}
-                onValueChange={handleCategoryChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Выберите категорию" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все категории</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Пользователь</label>
-              <Select
-                value={filters.userId}
-                onValueChange={handleUserChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Выберите пользователя" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все пользователи</SelectItem>
-                  {uniqueUsers.map(user => (
-                    <SelectItem key={user.id} value={user.id.toString()}>
-                      {user.first_name} {user.last_name || ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-      </div>
+      <TransactionFilters
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        categories={categories}
+        uniqueUsers={uniqueUsers}
+      />
 
       <div className="space-y-4">
         {isLoading && transactions.length === 0 ? (
@@ -549,102 +614,19 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
                   {getGroupDateTitle(new Date(dateKey))}
                 </h4>
                 {transactions.map((transaction) => (
-                  <ExpandableItem
+                  <TransactionItem
                     key={transaction.id}
-                    isExpanded={expandedTransactionId === transaction.id}
-                    onToggle={() => handleToggleExpand(transaction.id)}
-                    actions={
-                      <div className="flex w-full items-stretch gap-2">
-                        <AlertDialog
-                          open={transactionToDelete?.id === transaction.id}
-                          onOpenChange={(open) => !open && setTransactionToDelete(null)}
-                        >
-                          <AlertDialogTrigger asChild>
-                            <HapticButton
-                              variant="ghost"
-                              size="sm"
-                              className="flex-1 rounded-md border border-border text-destructive hover:text-destructive"
-                              onClick={(e) => handleDeleteTransaction(transaction, e)}
-                              aria-label="Удалить транзакцию"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Удалить
-                            </HapticButton>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Удалить транзакцию?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Вы уверены, что хотите удалить эту транзакцию? Это действие нельзя будет отменить.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel onClick={(e) => { e.stopPropagation(); setTransactionToDelete(null); }}>Отмена</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await handleConfirmDelete();
-                                }}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Удалить
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                        <HapticButton
-                          variant="ghost"
-                          size="sm"
-                          className="flex-1 rounded-md border border-border"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditTransaction(transaction);
-                          }}
-                          aria-label="Редактировать транзакцию"
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Редактировать
-                        </HapticButton>
-                      </div>
-                    }
-                  >
-                    <div className="bg-card text-card-foreground group flex items-center justify-between rounded-lg border p-3 text-sm">
-                      <div className="flex items-center space-x-3">
-                        {transaction.type === 'expense' ? (
-                          <ArrowDownCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
-                        ) : (
-                          <ArrowUpCircle className="h-5 w-5 flex-shrink-0 text-green-500" />
-                        )}
-                        <div>
-                          <div className="font-medium">
-                            {transaction.name ||
-                              transaction.categoryName ||
-                              (transaction.type === 'expense' ? 'Расход' : 'Пополнение')}
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            {transaction.categoryName} • {transaction.author.first_name} •{' '}
-                            {formatDate(transaction.createdAt, { month: 'short', day: 'numeric' })}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className={cn(
-                            'font-semibold',
-                            transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'
-                          )}
-                        >
-                          {transaction.type === 'expense' ? '-' : '+'}
-                          {formatCurrency(transaction.amount)}
-                        </span>
-                      </div>
-                    </div>
-                  </ExpandableItem>
+                    transaction={transaction}
+                    onEdit={handleEditTransaction}
+                    onDelete={handleDeleteTransaction}
+                    transactionToDelete={transactionToDelete}
+                    setTransactionToDelete={setTransactionToDelete}
+                    handleConfirmDelete={handleConfirmDelete}
+                  />
                 ))}
               </div>
             ))}
             
-            {/* Индикатор загрузки и триггер для подгрузки */}
             {hasMore && (
               <div ref={loadMoreRef} className="space-y-2">
                 {isLoadingMore && (
@@ -677,7 +659,6 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
         )}
       </div>
 
-      {/* Диалоговое окно формы транзакции */}
       {currentBudget && (
         <TransactionForm
           budgetId={currentBudget.id}
