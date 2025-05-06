@@ -18,6 +18,7 @@ import { useBudgets } from '@/contexts/BudgetContext'; // Импортируем
 import { popup } from '@telegram-apps/sdk-react'; // Для уведомлений об ошибках
 import { Budget } from '@/types'; // Импорт типа
 import * as mockApi from '@/lib/mockData'; // Импорт API
+import { useScrollToInput } from '@/hooks/useScrollToInput'; // Импортируем хук
 
 // Схема валидации Zod для бюджета
 const budgetSchema = z.object({
@@ -49,6 +50,7 @@ export function BudgetForm({
   onOpenChange,
   onBudgetSaved,
 }: BudgetFormProps) {
+  useScrollToInput({ isOpen: open }); // Передаем состояние открытия
   const { addBudget: addBudgetFromContext, updateBudget: updateBudgetFromContext } = useBudgets();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

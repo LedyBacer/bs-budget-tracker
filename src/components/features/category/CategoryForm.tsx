@@ -17,6 +17,7 @@ import {
 import { Category } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { useBudgets } from '@/contexts/BudgetContext'; // Нам нужен текущий бюджет для валидации
+import { useScrollToInput } from '@/hooks/useScrollToInput'; // Импортируем хук
 
 // Схема валидации Zod
 const categorySchema = z.object({
@@ -47,6 +48,7 @@ export function CategoryForm({
   onOpenChange,
   onCategorySaved,
 }: CategoryFormProps) {
+  useScrollToInput({ isOpen: open }); // Передаем состояние открытия
   const { currentBudget } = useBudgets(); // Получаем текущий бюджет для проверки лимитов
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

@@ -24,6 +24,7 @@ import {
 import { Category, TransactionType, WebAppUser } from '@/types';
 import * as mockApi from '@/lib/mockData';
 import { useLaunchParams } from '@telegram-apps/sdk-react';
+import { useScrollToInput } from '@/hooks/useScrollToInput';
 
 // Упрощённая схема валидации
 const simpleTransactionSchema = z.object({
@@ -53,6 +54,7 @@ export function SimpleTransactionForm({
   onOpenChange,
   onTransactionSaved,
 }: SimpleTransactionFormProps) {
+  useScrollToInput({ isOpen: open });
   const launchParams = useLaunchParams();
   const currentUser =
     launchParams.tgWebAppData &&

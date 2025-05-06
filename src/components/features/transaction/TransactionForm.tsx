@@ -28,6 +28,7 @@ import * as mockApi from '@/lib/mockData';
 import { useLaunchParams } from '@telegram-apps/sdk-react';
 import { popup } from '@telegram-apps/sdk-react'; // Импортируем popup для уведомлений
 import { Plus, Minus } from 'lucide-react';
+import { useScrollToInput } from '@/hooks/useScrollToInput'; // Импортируем хук
 
 // --- Схема валидации Zod для транзакции ---
 const transactionSchema = z.object({
@@ -63,6 +64,7 @@ export function TransactionForm({
   onOpenChange,
   onTransactionSaved,
 }: TransactionFormProps) {
+  useScrollToInput({ isOpen: open }); // Передаем состояние открытия
   console.log('TransactionForm rendered with props:', { budgetId, open, transactionToEdit });
   
   const launchParams = useLaunchParams();
