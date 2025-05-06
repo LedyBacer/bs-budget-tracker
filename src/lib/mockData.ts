@@ -16,7 +16,7 @@ let budgets: Budget[] = [
   {
     id: 'b1',
     name: 'Январь 2024',
-    totalAmount: 100000,
+    totalAmount: 115201,
     createdAt: new Date('2024-01-01T10:00:00Z'),
   },
   {
@@ -31,9 +31,13 @@ let categories: Category[] = [
   { id: 'c1', budgetId: 'b1', name: 'Еда', limit: 40000 },
   { id: 'c2', budgetId: 'b1', name: 'Транспорт', limit: 10000 },
   { id: 'c3', budgetId: 'b1', name: 'Развлечения', limit: 15000 },
-  { id: 'c4', budgetId: 'b2', name: 'Отель', limit: 80000 },
-  { id: 'c5', budgetId: 'b2', name: 'Авиабилеты', limit: 45000 },
-  { id: 'c6', budgetId: 'b2', name: 'Рестораны', limit: 25000 },
+  { id: 'c4', budgetId: 'b1', name: 'Кексы', limit: 100 },
+  { id: 'c5', budgetId: 'b1', name: 'Сникеры', limit: 100 },
+  { id: 'c6', budgetId: 'b1', name: 'Игры', limit: 15000 },
+  { id: 'c7', budgetId: 'b1', name: 'Прочее', limit: 1 },
+  { id: 'c8', budgetId: 'b2', name: 'Отель', limit: 80000 },
+  { id: 'c9', budgetId: 'b2', name: 'Авиабилеты', limit: 45000 },
+  { id: 'c10', budgetId: 'b2', name: 'Рестораны', limit: 25000 },
 ];
 
 let transactions: Transaction[] = [
