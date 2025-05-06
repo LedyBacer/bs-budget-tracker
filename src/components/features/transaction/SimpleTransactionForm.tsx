@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { HapticButton } from '@/components/ui/haptic-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Plus, Minus } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -157,49 +158,35 @@ export function SimpleTransactionForm({
             {/* Тип транзакции */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Тип</Label>
-              <div className="col-span-3">
+              <div className="col-span-3 flex w-full gap-2 justify-between">
                 <Controller
                   control={control}
                   name="type"
                   render={({ field }) => (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger className={errors.type ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Выберите тип..." />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        <SelectItem value="expense">Списание (Расход)</SelectItem>
-                        <SelectItem value="income">Пополнение (Доход)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <>
+                      <HapticButton
+                        type="button"
+                        variant={field.value === 'income' ? 'default' : 'outline'}
+                        className="max-w-[107px] flex-1 flex items-center justify-center"
+                        onClick={() => field.onChange('income')}
+                        disabled={isSubmitting}
+                      >
+                        <Plus className="h-4 w-4 text-green-500" />
+                      </HapticButton>
+                      <HapticButton
+                        type="button"
+                        variant={field.value === 'expense' ? 'default' : 'outline'}
+                        className="max-w-[107px] flex-1 flex items-center justify-center"
+                        onClick={() => field.onChange('expense')}
+                        disabled={isSubmitting}
+                      >
+                        <Minus className="h-4 w-4 text-red-500" />
+                      </HapticButton>
+                    </>
                   )}
                 />
                 {errors.type && (
                   <p className="text-destructive mt-1 text-xs">{errors.type.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Сумма */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
-                Сумма (₽)
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  placeholder="Например, 1500.50"
-                  {...register('amount')}
-                  className={errors.amount ? 'border-destructive' : ''}
-                  disabled={isSubmitting}
-                />
-                {errors.amount && (
-                  <p className="text-destructive mt-1 text-xs">{errors.amount.message}</p>
                 )}
               </div>
             </div>
@@ -248,6 +235,27 @@ export function SimpleTransactionForm({
                 />
                 {errors.categoryId && (
                   <p className="text-destructive mt-1 text-xs">{errors.categoryId.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Сумма */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right whitespace-nowrap">
+                Сумма, ₽
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="Например, 1500.50"
+                  {...register('amount')}
+                  className={errors.amount ? 'border-destructive' : ''}
+                  disabled={isSubmitting}
+                />
+                {errors.amount && (
+                  <p className="text-destructive mt-1 text-xs">{errors.amount.message}</p>
                 )}
               </div>
             </div>
