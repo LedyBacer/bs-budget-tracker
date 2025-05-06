@@ -272,7 +272,9 @@ const TransactionItem = ({
   onDelete,
   transactionToDelete,
   setTransactionToDelete,
-  handleConfirmDelete
+  handleConfirmDelete,
+  expandedTransactionId,
+  setExpandedTransactionId
 }: { 
   transaction: TransactionWithCategoryName;
   onEdit: (transaction: Transaction) => void;
@@ -280,17 +282,17 @@ const TransactionItem = ({
   transactionToDelete: Transaction | null;
   setTransactionToDelete: (transaction: Transaction | null) => void;
   handleConfirmDelete: () => Promise<void>;
+  expandedTransactionId: string | null;
+  setExpandedTransactionId: (id: string | null) => void;
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   const handleToggleExpand = () => {
     mediumHaptic();
-    setIsExpanded(!isExpanded);
+    setExpandedTransactionId(expandedTransactionId === transaction.id ? null : transaction.id);
   };
 
   return (
     <ExpandableItem
-      isExpanded={isExpanded}
+      isExpanded={expandedTransactionId === transaction.id}
       onToggle={handleToggleExpand}
       actions={
         <div className="flex w-full items-stretch gap-2">
@@ -403,6 +405,7 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
   const { ref: loadMoreRef, inView } = useInView();
   const ITEMS_PER_PAGE = 10;
   const isInitialLoad = useRef(true);
+  const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
     dateRange: 'all',
@@ -622,6 +625,8 @@ export const TransactionList = forwardRef<TransactionListRef>((_, ref) => {
                     transactionToDelete={transactionToDelete}
                     setTransactionToDelete={setTransactionToDelete}
                     handleConfirmDelete={handleConfirmDelete}
+                    expandedTransactionId={expandedTransactionId}
+                    setExpandedTransactionId={setExpandedTransactionId}
                   />
                 ))}
               </div>
