@@ -64,19 +64,36 @@ export function FullTransactionForm({
     reset,
     control,
     setValue,
+    trigger,
+    watch,
     formState: { errors, isValid },
   } = useForm<FullTransactionFormData>({
-    resolver: zodResolver(fullTransactionSchema),
+    resolver: zodResolver(fullTransactionSchema) as any,
     defaultValues: getFullFormDefaultValues(transactionToEdit),
     mode: 'onChange',
   });
+
+  // Наблюдаем за изменениями в основных полях формы
+  const watchedType = watch('type');
+  const watchedCategoryId = watch('categoryId');
+  const watchedAmount = watch('amount');
+  const watchedCreatedAt = watch('createdAt');
 
   // Инициализация формы при открытии или изменении транзакции для редактирования
   useEffect(() => {
     if (open) {
       const initialAmount = transactionToEdit?.amount || 0;
       setFormattedAmount(initialAmount ? String(initialAmount) : '');
-      reset(getFullFormDefaultValues(transactionToEdit));
+      
+      // Сбрасываем форму с правильными значениями из транзакции
+      const defaultValues = getFullFormDefaultValues(transactionToEdit);
+      
+      // Убедимся, что дата корректно передается компоненту DateTimeInput
+      if (transactionToEdit?.createdAt) {
+        defaultValues.createdAt = new Date(transactionToEdit.createdAt);
+      }
+      
+      reset(defaultValues);
       setSubmitError(null);
     }
   }, [open, reset, transactionToEdit]);
@@ -136,7 +153,15 @@ export function FullTransactionForm({
     const formatted = value.replace(/\s/g, '');
     setFormattedAmount(value);
     setValue('amount', Number(formatted) || 0);
+    trigger('amount'); // Запускаем повторную валидацию суммы
   };
+
+  // Эффект для принудительной валидации при изменении основных полей
+  useEffect(() => {
+    if (open) {
+      trigger(); // Запускаем валидацию всей формы при изменении основных полей
+    }
+  }, [watchedType, watchedCategoryId, watchedAmount, watchedCreatedAt, open, trigger]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,7 +171,7 @@ export function FullTransactionForm({
             {transactionToEdit ? 'Редактировать транзакцию' : 'Добавить транзакцию'}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit as any)}>
           <div className="grid gap-4 py-4">
             {/* Тип транзакции */}
             <div className="grid grid-cols-4 items-center gap-4">
@@ -214,7 +239,7 @@ export function FullTransactionForm({
             {/* Комментарий */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="comment" className="text-right">
-                Комментарий
+                Заметка
               </Label>
               <div className="col-span-3">
                 <Textarea

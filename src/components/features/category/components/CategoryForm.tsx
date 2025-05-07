@@ -113,7 +113,7 @@ export function CategoryForm({
             
             <FormField
               id="limit"
-              label="Лимит (₽)"
+              label="Лимит, ₽"
               type="text"
               inputMode="decimal"
               placeholder="Например, 5 000"

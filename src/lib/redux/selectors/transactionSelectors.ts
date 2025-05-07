@@ -5,12 +5,17 @@ import { format, startOfDay } from 'date-fns';
 // Селектор для получения всех транзакций
 export const selectTransactions = (state: any) => {
   // Здесь можно получить транзакции из состояния RTK Query
-  const transactions = Object.values(state.api.queries)
+  const allTransactions = Object.values(state.api.queries)
     .filter((query: any) => query?.data && Array.isArray(query.data))
     .flatMap((query: any) => query.data)
     .filter((item: any) => item && item.id && (item.type === 'expense' || item.type === 'income'));
   
-  return transactions as Transaction[];
+  // Дедупликация транзакций по ID
+  const uniqueTransactions = Array.from(
+    new Map(allTransactions.map((t: any) => [t.id, t])).values()
+  );
+  
+  return uniqueTransactions as Transaction[];
 };
 
 // Селектор для группировки транзакций по дате

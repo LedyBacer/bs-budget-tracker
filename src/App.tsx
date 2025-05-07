@@ -33,7 +33,7 @@ import { useAppSelector } from '@/lib/redux/hooks';
 import { selectDataVersion } from '@/lib/redux/slices/budgetsSlice';
 
 function AppContent() {
-  const { currentBudget, isLoadingBudgets, errorLoadingBudgets, reloadBudgets } = useBudgetsRedux();
+  const { currentBudget, allBudgets, isLoadingBudgets, errorLoadingBudgets, reloadBudgets, selectBudget } = useBudgetsRedux();
   const dataVersion = useAppSelector(selectDataVersion);
   const launchParams = useLaunchParams();
   const [isSimpleFormOpen, setIsSimpleFormOpen] = useState(false);
@@ -49,6 +49,12 @@ function AppContent() {
   useEffect(() => {
     miniApp.ready();
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingBudgets && !currentBudget && allBudgets.length > 0) {
+      selectBudget(allBudgets[0].id);
+    }
+  }, [isLoadingBudgets, currentBudget, allBudgets, selectBudget]);
 
   useEffect(() => {
     const handleBackClick = () => {
