@@ -18,9 +18,13 @@ export const HapticButton: React.FC<HapticButtonProps> = ({
   ...props // Остальные пропсы передаем в оригинальную кнопку
 }) => {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    // Проверяем поддержку и доступность функции
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred(impactStyle);
+    // Безопасно проверяем доступность hapticFeedback и его метода isAvailable
+    try {
+      if (hapticFeedback && hapticFeedback.impactOccurred && hapticFeedback.impactOccurred.isAvailable && hapticFeedback.impactOccurred.isAvailable()) {
+        hapticFeedback.impactOccurred(impactStyle);
+      }
+    } catch (error) {
+      console.error('Ошибка при использовании hapticFeedback:', error);
     }
 
     // Вызываем оригинальный обработчик onClick, если он был передан

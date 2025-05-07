@@ -1,15 +1,14 @@
-import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
-import { Category, Transaction, WebAppUser } from '@/types';
-import * as mockApi from '@/lib/mockData';
+import { useState, forwardRef, useImperativeHandle, useEffect } from 'react';
+import { Transaction } from '@/types';
 import { FullTransactionForm } from '../forms/FullTransactionForm';
 import { TransactionListSkeleton } from '@/components/ui/skeletons';
 import { useInView } from 'react-intersection-observer';
-import { TransactionWithCategoryName } from '../utils/types';
 import { TransactionFilters } from './TransactionFilters';
 import { TransactionGroup } from './TransactionGroup';
 import { AddTransactionButtonContainer } from './AddTransactionButtonContainer';
 import { useTransactionFilters } from '../hooks/useTransactionFilters';
 import { useTransactionGroups } from '../hooks/useTransactionGroups';
+import { useTransactionListRedux } from '@/hooks/useTransactionListRedux';
 
 export interface TransactionListRef {
   loadData: () => Promise<void>;
@@ -22,23 +21,32 @@ interface TransactionListProps {
 
 export const TransactionList = forwardRef<TransactionListRef, TransactionListProps>(
   ({ budgetId, onMajorDataChange }, ref) => {
-    // Состояния для данных
-    const [transactions, setTransactions] = useState<TransactionWithCategoryName[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [uniqueUsers, setUniqueUsers] = useState<WebAppUser[]>([]);
-    
-    // Состояния для загрузки и пагинации
-    const [isLoading, setIsLoading] = useState(false);
-    const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
-    const [page, setPage] = useState(1);
+    // Используем Redux хук для транзакций
+    const {
+      transactions,
+      categories,
+      uniqueUsers,
+      isLoading,
+      hasMoreTransactions,
+      loadMore,
+      reloadData,
+      deleteTransaction
+    } = useTransactionListRedux(budgetId);
     
     // Состояния для управления UI
     const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
     
-    const loadMoreRef = useRef<HTMLDivElement>(null);
+    // InView хук для бесконечной прокрутки
     const { ref: inViewRef, inView } = useInView();
+
+    // Перемещаем логику загрузки в useEffect
+    useEffect(() => {
+      if (inView && hasMoreTransactions && !isLoading) {
+        loadMore();
+      }
+    }, [inView, hasMoreTransactions, isLoading, loadMore]);
 
     // Применяем фильтры к транзакциям
     const { filters, updateFilters, filteredTransactions } = useTransactionFilters(transactions);
@@ -46,89 +54,10 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
     // Группируем отфильтрованные транзакции по дате
     const { groupedTransactions, sortedGroupKeys } = useTransactionGroups(filteredTransactions);
 
-    // Загрузка транзакций
-    const loadTransactions = async (pageNum: number, append = false) => {
-      if (!budgetId) return;
-      
-      try {
-        setIsLoading(true);
-        const response = await mockApi.getTransactionsByBudgetId(budgetId, { page: pageNum });
-        
-        // Загружаем категории один раз для получения их имён
-        let allCategories: Category[] = [];
-        try {
-          allCategories = await mockApi.getCategoriesByBudgetId(budgetId);
-        } catch (error) {
-          console.error('Failed to load categories for transaction names:', error);
-        }
-        
-        // Добавляем имена категорий к транзакциям
-        const transactionsWithCategories: TransactionWithCategoryName[] = response.map((transaction) => {
-          const category = allCategories.find(c => c.id === transaction.categoryId);
-          return {
-            ...transaction,
-            categoryName: category?.name || 'Неизвестная категория',
-          };
-        });
-
-        if (append) {
-          setTransactions((prev) => [...prev, ...transactionsWithCategories]);
-        } else {
-          setTransactions(transactionsWithCategories);
-        }
-        
-        setHasMoreTransactions(response.length === 10); // Если получили полную страницу
-        
-        // Извлекаем уникальных пользователей из транзакций
-        if (page === 1) {
-          const users = response.reduce<WebAppUser[]>((acc, transaction) => {
-            const exists = acc.find((user) => user.id === transaction.author.id);
-            if (!exists) {
-              acc.push(transaction.author);
-            }
-            return acc;
-          }, []);
-          setUniqueUsers(users);
-        }
-      } catch (error) {
-        console.error('Failed to load transactions:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Загрузка категорий
-    const loadCategories = async () => {
-      try {
-        const cats = await mockApi.getCategoriesByBudgetId(budgetId);
-        setCategories(cats);
-      } catch (error) {
-        console.error('Failed to load categories:', error);
-      }
-    };
-
-    // Начальная загрузка данных
-    useEffect(() => {
-      if (budgetId) {
-        loadTransactions(1);
-        loadCategories();
-      }
-    }, [budgetId]);
-
-    // Загрузка при скроллинге до конца списка
-    useEffect(() => {
-      if (inView && hasMoreTransactions && !isLoading) {
-        setPage((prev) => prev + 1);
-        loadTransactions(page + 1, true);
-      }
-    }, [inView, hasMoreTransactions, isLoading]);
-
     // Предоставляем функцию загрузки данных через ref
     useImperativeHandle(ref, () => ({
       loadData: async () => {
-        setPage(1);
-        await loadTransactions(1);
-        await loadCategories();
+        await reloadData();
       },
     }));
 
@@ -145,9 +74,7 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
 
     const handleDeleteTransaction = async (transaction: Transaction) => {
       try {
-        await mockApi.deleteTransaction(transaction.id);
-        // Обновляем список транзакций, исключая удаленную
-        setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
+        await deleteTransaction(transaction.id);
         // Сигнализируем о необходимости глобального обновления, если callback передан
         if (onMajorDataChange) {
           await onMajorDataChange();
@@ -159,9 +86,7 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
 
     const handleTransactionSaved = async () => {
       // Перезагружаем все данные после сохранения транзакции
-      setPage(1); // Сбрасываем на первую страницу
-      await loadTransactions(1, false); // Перезагружаем транзакции для первой страницы
-      await loadCategories(); // Перезагружаем категории
+      await reloadData();
 
       // Сигнализируем о необходимости глобального обновления, если callback передан
       if (onMajorDataChange) {
@@ -200,28 +125,31 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
             sortedGroupKeys.map((dateKey) => (
               <TransactionGroup
                 key={dateKey}
-                date={new Date(dateKey)}
+                dateKey={dateKey}
                 transactions={groupedTransactions[dateKey]}
+                expandedTransactionId={expandedTransactionId}
+                onToggleExpand={setExpandedTransactionId}
                 onEdit={handleEditTransaction}
                 onDelete={handleDeleteTransaction}
-                expandedTransactionId={expandedTransactionId}
-                setExpandedTransactionId={setExpandedTransactionId}
               />
             ))
           )}
+
+          {/* Индикатор загрузки при прокрутке */}
+          {hasMoreTransactions && (
+            <div ref={inViewRef} className="flex justify-center py-4">
+              {isLoading && transactions.length > 0 && (
+                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Элемент для отслеживания загрузки новых данных */}
-        {hasMoreTransactions && (
-          <div ref={inViewRef} className="py-4">
-            {isLoading && <TransactionListSkeleton />}
-          </div>
-        )}
-
-        {/* Форма редактирования */}
+        {/* Форма добавления/редактирования транзакции */}
         <FullTransactionForm
           budgetId={budgetId}
           transactionToEdit={transactionToEdit}
+          categories={categories}
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}
           onTransactionSaved={handleTransactionSaved}

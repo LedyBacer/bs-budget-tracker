@@ -3,7 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 import { hapticFeedback } from "@telegram-apps/sdk"
 
-import { cn } from "@/lib/utils"
+import { cn, mediumHaptic } from "@/lib/utils"
 
 function Dialog({
   ...props
@@ -16,10 +16,7 @@ function DialogTrigger({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    // Проверяем поддержку и доступность функции
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred('medium');
-    }
+    mediumHaptic();
 
     // Вызываем оригинальный обработчик onClick, если он был передан
     if (onClick) {
@@ -41,10 +38,7 @@ function DialogClose({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    // Проверяем поддержку и доступность функции
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred('medium');
-    }
+    mediumHaptic();
 
     // Вызываем оригинальный обработчик onClick, если он был передан
     if (onClick) {

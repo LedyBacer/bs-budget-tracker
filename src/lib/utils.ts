@@ -41,8 +41,12 @@ export function formatDate(
 }
 
 export function mediumHaptic() {
-  if (hapticFeedback.impactOccurred.isAvailable()) {
-    hapticFeedback.impactOccurred('medium');
+  try {
+    if (hapticFeedback && hapticFeedback.impactOccurred && hapticFeedback.impactOccurred.isAvailable && hapticFeedback.impactOccurred.isAvailable()) {
+      hapticFeedback.impactOccurred('medium');
+    }
+  } catch (error) {
+    console.error('Ошибка при использовании hapticFeedback:', error);
   }
 }
 

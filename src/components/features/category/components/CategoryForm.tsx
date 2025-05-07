@@ -11,11 +11,11 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Category } from '@/types';
-import * as mockApi from '@/lib/mockData';
 import { useScrollToInput } from '@/hooks/useScrollToInput';
 import { formatNumberWithSpaces, parseFormattedNumber } from '@/lib/utils';
 import { FormField } from './FormField';
 import { categorySchema, CategoryFormData } from '../utils/categorySchema';
+import { useCategoriesRedux } from '@/hooks/useCategoriesRedux';
 
 interface CategoryFormProps {
   budgetId: string;
@@ -33,6 +33,7 @@ export function CategoryForm({
   onCategorySaved,
 }: CategoryFormProps) {
   useScrollToInput({ isOpen: open });
+  const { addCategory, updateCategory } = useCategoriesRedux(budgetId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formattedLimit, setFormattedLimit] = useState<string>('');
@@ -77,9 +78,9 @@ export function CategoryForm({
 
     try {
       if (categoryToEdit) {
-        await mockApi.updateCategory(categoryToEdit.id, data.name, data.limit || 0);
+        await updateCategory(categoryToEdit.id, data.name, data.limit || 0);
       } else {
-        await mockApi.addCategory(budgetId, data.name, data.limit || 0);
+        await addCategory(data.name, data.limit || 0);
       }
       onCategorySaved();
       onOpenChange(false);

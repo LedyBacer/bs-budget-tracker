@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, mediumHaptic } from '@/lib/utils';
 import { hapticFeedback } from '@telegram-apps/sdk';
 
 interface ExpandableItemProps {
@@ -20,10 +20,7 @@ export function ExpandableItem({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleClick = () => {
-    // Проверяем поддержку и доступность функции
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred('medium');
-    }
+    mediumHaptic();
 
     // Вызываем оригинальный обработчик onClick
     onToggle();

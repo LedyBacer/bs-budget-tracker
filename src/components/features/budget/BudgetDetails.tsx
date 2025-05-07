@@ -1,6 +1,4 @@
 // src/components/features/budget/BudgetDetails.tsx
-import { useBudgets } from '@/contexts/BudgetContext';
-import { mediumHaptic } from '@/lib/utils';
 import { useState } from 'react';
 import { ExpandableItem } from '@/components/ui/expandable-item';
 import { BudgetForm } from './BudgetForm';
@@ -8,9 +6,11 @@ import { Budget } from '@/types';
 import { BudgetActions } from './components/BudgetActions';
 import { BudgetSummary } from './components/BudgetSummary';
 import { NoBudgetSelectedState } from './components/BudgetStates';
+import { mediumHaptic } from '@/lib/utils';
+import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
 
 export function BudgetDetails() {
-  const { currentBudget, deleteBudget: deleteBudgetFromContext, reloadBudgets } = useBudgets();
+  const { currentBudget, deleteBudget, reloadBudgets } = useBudgetsRedux();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
   const [expandedBudgetId, setExpandedBudgetId] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function BudgetDetails() {
   const handleConfirmDelete = async () => {
     if (!budgetToDelete) return;
     try {
-      await deleteBudgetFromContext(budgetToDelete.id);
+      await deleteBudget(budgetToDelete.id);
     } catch (error) {
       console.error('Delete confirmation handle failed:', error);
     } finally {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { HapticButton } from '@/components/ui/haptic-button';
 import { Label } from '@/components/ui/label';
@@ -12,9 +12,9 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 
-import { useBudgets } from '@/contexts/BudgetContext';
+import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
 import { useScrollToInput } from '@/hooks/useScrollToInput';
-import * as mockApi from '@/lib/mockData';
+import { useAddTransactionMutation } from '@/lib/redux/api';
 
 // Импортируем переиспользуемые компоненты
 import { TypeSelector } from './TypeSelector';
@@ -42,9 +42,10 @@ export function SimpleTransactionForm({
 }: SimpleTransactionFormProps) {
   // Хуки
   useScrollToInput({ isOpen: open });
-  const { reloadBudgets } = useBudgets();
+  const { reloadBudgets } = useBudgetsRedux();
   const { currentUser } = useTelegramUser();
   const { categories, isLoadingCategories, error: categoriesError } = useCategoriesLoader(budgetId, open);
+  const [addTransaction] = useAddTransactionMutation();
 
   // Состояния
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,7 +60,7 @@ export function SimpleTransactionForm({
     setValue,
     formState: { errors },
   } = useForm<SimpleTransactionFormData>({
-    resolver: zodResolver(simpleTransactionSchema),
+    resolver: zodResolver(simpleTransactionSchema) as any,
     defaultValues: getSimpleFormDefaultValues(),
   });
 
@@ -90,21 +91,23 @@ export function SimpleTransactionForm({
         return;
       }
 
-      await mockApi.addTransaction(
+      // Используем Redux API вместо прямого вызова mockApi
+      await addTransaction({
         budgetId,
-        data.categoryId,
-        data.type,
-        data.amount,
-        {
+        categoryId: data.categoryId,
+        type: data.type,
+        amount: data.amount,
+        author: {
           id: currentUser.id,
           first_name: currentUser.first_name,
           last_name: currentUser.last_name,
           username: currentUser.username,
         },
-        '',
-        '',
-        new Date()
-      );
+        name: '',
+        comment: '',
+        createdAt: new Date()
+      }).unwrap();
+      
       onTransactionSaved();
       await reloadBudgets();
       onOpenChange(false);
@@ -136,7 +139,7 @@ export function SimpleTransactionForm({
         <DialogHeader>
           <DialogTitle>Добавить транзакцию</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit as any)}>
           <div className="grid gap-4 py-4">
             {/* Тип транзакции */}
             <div className="grid grid-cols-4 items-center gap-4">

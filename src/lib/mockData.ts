@@ -149,6 +149,30 @@ let categories: Category[] = [
 
 let transactions: Transaction[] = [];
 
+// Функция для сериализации объектов Date в строки ISO для всех объектов
+const serializeDate = <T>(obj: T): T => {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    return obj;
+  }
+  
+  const result = { ...obj } as any;
+  
+  for (const key in result) {
+    if (result[key] instanceof Date) {
+      result[key] = (result[key] as Date).toISOString();
+    } else if (result[key] !== null && typeof result[key] === 'object' && !Array.isArray(result[key])) {
+      result[key] = serializeDate(result[key]);
+    }
+  }
+  
+  return result as T;
+};
+
+// Функция для сериализации массива объектов с датами
+const serializeArrayDates = <T>(array: T[]): T[] => {
+  return array.map(item => serializeDate(item));
+};
+
 // Функция для пересчета значений бюджета
 const recalculateBudgetValues = (budgetId: string) => {
   const budgetTransactions = transactions.filter(t => t.budgetId === budgetId);
@@ -216,7 +240,9 @@ budgets.forEach(budget => {
 export const getBudgets = async (): Promise<Budget[]> => {
   await fakeNetworkDelay();
   console.log('Mock API: getBudgets called');
-  return [...budgets]; // Возвращаем копию
+  
+  // Сериализуем все объекты с датами
+  return serializeArrayDates(budgets);
 };
 
 export const addBudget = async (name: string, totalAmount: number): Promise<Budget> => {
@@ -287,7 +313,7 @@ export const getCategoriesByBudgetId = async (budgetId: string): Promise<Categor
   await fakeNetworkDelay();
   console.log('Mock API: getCategoriesByBudgetId called for', budgetId);
   if (!budgetId) return [];
-  return categories.filter((c) => c.budgetId === budgetId).map((c) => ({ ...c })); // Возвращаем копии
+  return serializeArrayDates(categories.filter((c) => c.budgetId === budgetId));
 };
 
 export const addCategory = async (
@@ -466,14 +492,21 @@ export const getTransactionsByBudgetId = async (
   );
 
   // Сортируем по дате, самые новые сверху
-  filteredTransactions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  filteredTransactions.sort((a, b) => {
+    const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+    const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+    return dateB - dateA;
+  });
   
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   
-  return filteredTransactions
-    .slice(startIndex, endIndex)
-    .map((t) => ({ ...t })); // Возвращаем копии
+  // Сериализуем даты перед возвратом
+  return serializeArrayDates(
+    filteredTransactions
+      .slice(startIndex, endIndex)
+      .map((t) => ({ ...t }))
+  );
 };
 
 // Обновляем функцию addTransaction
@@ -514,7 +547,8 @@ export const addTransaction = async (
   recalculateBudgetValues(budgetId);
   recalculateCategoryValues(budgetId);
   
-  return { ...newTransaction };
+  // Сериализуем даты перед возвратом
+  return serializeDate({ ...newTransaction });
 };
 
 // Обновляем функцию updateTransaction
@@ -543,7 +577,8 @@ export const updateTransaction = async (
   recalculateBudgetValues(budgetId);
   recalculateCategoryValues(budgetId);
 
-  return { ...updatedTransaction } as Transaction;
+  // Сериализуем даты перед возвратом
+  return serializeDate({ ...updatedTransaction } as Transaction);
 };
 
 // Обновляем функцию deleteTransaction

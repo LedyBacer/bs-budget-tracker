@@ -14,9 +14,9 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 
-import { Transaction, WebAppUser } from '@/types';
+import { Category, Transaction, WebAppUser } from '@/types';
 import { useScrollToInput } from '@/hooks/useScrollToInput';
-import * as mockApi from '@/lib/mockData';
+import { useTransactionsRedux } from '@/hooks/useTransactionsRedux';
 
 // Импортируем переиспользуемые компоненты
 import { TypeSelector } from './TypeSelector';
@@ -27,12 +27,12 @@ import { DateTimeInput } from './DateTimeInput';
 // Импортируем типы и хуки
 import { FullTransactionFormData, fullTransactionSchema } from '../utils/schemas';
 import { getFullFormDefaultValues } from '../utils/formHelpers';
-import { useCategoriesLoader } from '../hooks/useCategoriesLoader';
 import { useTelegramUser } from '../hooks/useTelegramUser';
 
 interface FullTransactionFormProps {
   budgetId: string;
   transactionToEdit?: Transaction | null;
+  categories: Category[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTransactionSaved: () => void;
@@ -41,6 +41,7 @@ interface FullTransactionFormProps {
 export function FullTransactionForm({
   budgetId,
   transactionToEdit,
+  categories,
   open,
   onOpenChange,
   onTransactionSaved,
@@ -48,12 +49,13 @@ export function FullTransactionForm({
   // Хуки
   useScrollToInput({ isOpen: open });
   const { currentUser } = useTelegramUser();
-  const { categories, isLoadingCategories, error: categoriesError } = useCategoriesLoader(budgetId, open);
-
+  const { addTransaction, updateTransaction } = useTransactionsRedux(budgetId);
+  
   // Состояния
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formattedAmount, setFormattedAmount] = useState<string>('');
+  const [isLoadingCategories] = useState(false);
 
   // React Hook Form
   const {
@@ -92,7 +94,7 @@ export function FullTransactionForm({
     try {
       if (transactionToEdit) {
         // Обновление существующей транзакции
-        await mockApi.updateTransaction(transactionToEdit.id, {
+        await updateTransaction(transactionToEdit.id, {
           type: data.type,
           amount: data.amount,
           categoryId: data.categoryId,
@@ -102,8 +104,7 @@ export function FullTransactionForm({
         });
       } else {
         // Создание новой транзакции
-        await mockApi.addTransaction(
-          budgetId,
+        await addTransaction(
           data.categoryId,
           data.type,
           data.amount,
@@ -136,13 +137,6 @@ export function FullTransactionForm({
     setFormattedAmount(value);
     setValue('amount', Number(formatted) || 0);
   };
-
-  // Отображение ошибки из загрузчика категорий
-  useEffect(() => {
-    if (categoriesError) {
-      setSubmitError(categoriesError);
-    }
-  }, [categoriesError]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -199,11 +193,46 @@ export function FullTransactionForm({
               </div>
             </div>
 
+            {/* Название */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Название
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="name"
+                  placeholder="Например: Обед в кафе"
+                  {...register('name')}
+                  disabled={isSubmitting}
+                />
+                {errors.name && (
+                  <p className="text-destructive mt-1 text-xs">{errors.name.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Комментарий */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="comment" className="text-right">
+                Комментарий
+              </Label>
+              <div className="col-span-3">
+                <Textarea
+                  id="comment"
+                  placeholder="Дополнительная информация..."
+                  {...register('comment')}
+                  className="h-20 resize-none"
+                  disabled={isSubmitting}
+                />
+                {errors.comment && (
+                  <p className="text-destructive mt-1 text-xs">{errors.comment.message}</p>
+                )}
+              </div>
+            </div>
+
             {/* Дата и время */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="createdAt" className="text-right">
-                Дата
-              </Label>
+              <Label className="text-right">Дата</Label>
               <div className="col-span-3">
                 <DateTimeInput
                   control={control}
@@ -213,53 +242,19 @@ export function FullTransactionForm({
               </div>
             </div>
 
-            {/* Название (опционально) */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right flex flex-col items-end">
-                <span>Название</span>
-                <span className="text-muted-foreground text-xs">(опц.)</span>
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="name"
-                  placeholder="Например, 'Обед в кафе'"
-                  {...register('name')}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-
-            {/* Комментарий (опционально) */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="comment" className="text-right flex flex-col items-end">
-                <span>Заметка</span>
-                <span className="text-muted-foreground text-xs">(опц.)</span>
-              </Label>
-              <div className="col-span-3">
-                <Textarea
-                  id="comment"
-                  placeholder="Дополнительная информация о транзакции..."
-                  {...register('comment')}
-                  disabled={isSubmitting}
-                  rows={2}
-                />
-              </div>
-            </div>
-
+            {/* Ошибка отправки */}
             {submitError && (
               <p className="text-destructive col-span-4 text-center text-sm">{submitError}</p>
             )}
           </div>
+
           <DialogFooter>
             <DialogClose asChild>
               <HapticButton type="button" variant="outline" disabled={isSubmitting}>
                 Отмена
               </HapticButton>
             </DialogClose>
-            <HapticButton
-              type="submit"
-              disabled={isSubmitting || !currentUser || !isValid}
-            >
+            <HapticButton type="submit" disabled={isSubmitting || !isValid}>
               {isSubmitting ? 'Сохранение...' : 'Сохранить'}
             </HapticButton>
           </DialogFooter>

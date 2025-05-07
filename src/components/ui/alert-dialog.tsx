@@ -2,7 +2,7 @@ import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { hapticFeedback } from "@telegram-apps/sdk"
 
-import { cn } from "@/lib/utils"
+import { cn, mediumHaptic } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 function AlertDialog({
@@ -16,10 +16,7 @@ function AlertDialogTrigger({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Trigger>) {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    // Проверяем поддержку и доступность функции
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred('medium');
-    }
+    mediumHaptic();
 
     // Вызываем оригинальный обработчик onClick, если он был передан
     if (onClick) {
@@ -140,10 +137,7 @@ function AlertDialogAction({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    // Проверяем поддержку и доступность функции
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred('medium');
-    }
+    mediumHaptic();
 
     // Вызываем оригинальный обработчик onClick, если он был передан
     if (onClick) {
@@ -166,10 +160,7 @@ function AlertDialogCancel({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    // Проверяем поддержку и доступность функции
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred('medium');
-    }
+    mediumHaptic();
 
     // Вызываем оригинальный обработчик onClick, если он был передан
     if (onClick) {

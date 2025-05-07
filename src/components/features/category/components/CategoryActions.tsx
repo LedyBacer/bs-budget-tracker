@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import * as mockApi from '@/lib/mockData';
+import { useCategoriesRedux } from '@/hooks/useCategoriesRedux';
 
 interface CategoryActionsProps {
   category: Category;
@@ -23,10 +23,11 @@ interface CategoryActionsProps {
 
 export function CategoryActions({ category, onEdit, onDelete }: CategoryActionsProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { deleteCategory } = useCategoriesRedux(category.budgetId);
   
   const handleDelete = async () => {
     try {
-      await mockApi.deleteCategory(category.id);
+      await deleteCategory(category.id);
       onDelete();
     } catch (error: any) {
       console.error('Failed to delete category:', error);

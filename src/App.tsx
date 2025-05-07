@@ -2,19 +2,15 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   useLaunchParams,
-  useSignal,
   miniApp,
   backButton,
-  mainButton,
   themeParams,
 } from '@telegram-apps/sdk-react';
 import { WebAppUser } from '@/types';
-import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { PageWrapper } from '@/components/layout/PageWrapper';
-import { BudgetProvider, useBudgets } from '@/contexts/BudgetContext';
 import { BudgetList } from '@/components/features/budget/BudgetList';
 import { BudgetDetails } from '@/components/features/budget/BudgetDetails';
 import { CategoryList } from '@/components/features/category';
@@ -29,16 +25,19 @@ import {
   TransactionListSkeleton,
   Skeleton,
 } from '@/components/ui/skeletons';
-import { HapticButton } from '@/components/ui/haptic-button';
 import { PlusCircle } from 'lucide-react';
 import { ActionButton } from '@/components/ui/action-button';
+import { ReduxProvider } from '@/lib/redux/provider';
+import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
+import { useAppSelector } from '@/lib/redux/hooks';
+import { selectDataVersion } from '@/lib/redux/slices/budgetsSlice';
 
 function AppContent() {
-  const { currentBudget, isLoadingBudgets, errorLoadingBudgets, reloadBudgets } = useBudgets();
+  const { currentBudget, isLoadingBudgets, errorLoadingBudgets, reloadBudgets } = useBudgetsRedux();
+  const dataVersion = useAppSelector(selectDataVersion);
   const launchParams = useLaunchParams();
   const [isSimpleFormOpen, setIsSimpleFormOpen] = useState(false);
   const transactionListRef = useRef<{ loadData: () => Promise<void> } | null>(null);
-  const [dataVersion, setDataVersion] = useState(0); 
 
   const currentUser =
     launchParams.tgWebAppData &&
@@ -66,7 +65,6 @@ function AppContent() {
 
   const refreshDependentData = async () => {
     await reloadBudgets(); 
-    setDataVersion(prevVersion => prevVersion + 1); 
   };
 
   return (
@@ -140,9 +138,9 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <BudgetProvider>
+      <ReduxProvider>
         <AppContent />
-      </BudgetProvider>
+      </ReduxProvider>
     </ThemeProvider>
   );
 }

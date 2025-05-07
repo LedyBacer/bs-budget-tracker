@@ -44,6 +44,10 @@ export function TransactionItem({
     return `${formatDate(date)} ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
+  const formatShortTime = (date: Date) => {
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <ExpandableItem
       isExpanded={isExpanded}
@@ -57,37 +61,50 @@ export function TransactionItem({
       }
     >
       <div className="bg-card text-card-foreground group relative rounded-lg border px-3 py-2.5 text-sm">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
+          {/* Иконка по центру - временно скрыта
+          <div className="flex items-center self-center">
             {transaction.type === 'income' ? (
-              <ArrowUpCircle className="h-5 w-5 text-emerald-500" />
+              <ArrowUpCircle className="h-5 w-5 flex-shrink-0 text-emerald-500" />
             ) : (
-              <ArrowDownCircle className="h-5 w-5 text-rose-500" />
+              <ArrowDownCircle className="h-5 w-5 flex-shrink-0 text-rose-500" />
             )}
-            <div>
-              <div className="flex items-baseline">
-                <span className="font-medium truncate max-w-[150px]">
-                  {transaction.name || transaction.categoryName}
+          </div>
+          */}
+          
+          {/* Основной контент */}
+          <div className="flex flex-col gap-1 w-full min-w-0">
+            <div className="flex items-center justify-between w-full">
+              <span className="font-medium truncate">
+                {transaction.name || transaction.categoryName}
+              </span>
+              
+              <div className="flex items-center">
+                <span
+                  className={cn(
+                    'text-base font-medium whitespace-nowrap',
+                    transaction.type === 'income'
+                      ? 'text-emerald-500'
+                      : 'text-rose-500'
+                  )}
+                >
+                  {transaction.type === 'income' ? '+' : '-'}
+                  {formatCurrency(transaction.amount)}
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground truncate">
-                {transaction.name
-                  ? transaction.categoryName
-                  : 'Без названия'}
-              </div>
+            </div>
+            
+            <div className="text-xs text-muted-foreground truncate flex justify-between">
+              <span>
+                {transaction.name 
+                  ? `${transaction.categoryName} | ${transaction.author.first_name}`
+                  : `Без названия | ${transaction.author.first_name}`}
+              </span>
+              <span className="whitespace-nowrap">
+                {formatShortTime(new Date(transaction.createdAt))}
+              </span>
             </div>
           </div>
-          <span
-            className={cn(
-              'text-base font-medium',
-              transaction.type === 'income'
-                ? 'text-emerald-500'
-                : 'text-rose-500'
-            )}
-          >
-            {transaction.type === 'income' ? '+' : '-'}
-            {formatCurrency(transaction.amount)}
-          </span>
         </div>
 
         <div
@@ -102,6 +119,13 @@ export function TransactionItem({
                 <div className="text-xs text-muted-foreground">Дата:</div>
                 <div className="text-sm">
                   {formatDateTime(new Date(transaction.createdAt))}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Автор:</div>
+                <div className="text-sm">
+                  {transaction.author.first_name} {transaction.author.last_name}
+                  {transaction.author.username && ` (@${transaction.author.username})`}
                 </div>
               </div>
               {transaction.comment && (

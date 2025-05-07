@@ -10,7 +10,7 @@ export interface Transaction {
   amount: number; // Сумма (всегда положительная)
   name?: string; // Опциональное название/описание
   comment?: string; // Опциональный комментарий
-  createdAt: Date; // Дата и время транзакции
+  createdAt: Date | string; // Дата и время транзакции (может быть объектом Date или строкой ISO)
   author: Pick<WebAppUser, 'id' | 'first_name' | 'last_name' | 'username'>; // Информация об авторе
   // updatedAt?: Date; // Опционально: для редактирования
   // lastEditor?: Pick<WebAppUser, 'id' | 'first_name'>; // Опционально: для редактирования

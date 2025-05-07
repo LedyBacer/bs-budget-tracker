@@ -3,24 +3,36 @@ import { format, isToday, isYesterday, isThisYear } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { TransactionItem } from './TransactionItem';
 import { TransactionWithCategoryName } from '../utils/types';
+import { useAppSelector } from '@/lib/redux/hooks';
+import { selectExpensesSumByDate } from '@/lib/redux/selectors/transactionSelectors';
+import { formatCurrency } from '@/lib/utils';
 
 interface TransactionGroupProps {
-  date: Date;
+  dateKey: string;
   transactions: TransactionWithCategoryName[];
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
   expandedTransactionId: string | null;
-  setExpandedTransactionId: (id: string | null) => void;
+  onToggleExpand: (id: string | null) => void;
 }
 
 export function TransactionGroup({
-  date,
+  dateKey,
   transactions,
   onEdit,
   onDelete,
   expandedTransactionId,
-  setExpandedTransactionId,
+  onToggleExpand,
 }: TransactionGroupProps) {
+  // Получаем суммы расходов по датам из Redux
+  const expensesSumByDate = useAppSelector(selectExpensesSumByDate);
+  
+  // Сумма расходов для текущей даты
+  const expensesSum = expensesSumByDate[dateKey] || 0;
+  
+  // Преобразуем ключ даты в объект Date
+  const date = new Date(dateKey);
+  
   // Функция для получения заголовка группы по дате
   const getGroupDateTitle = (date: Date): string => {
     if (isToday(date)) {
@@ -36,7 +48,12 @@ export function TransactionGroup({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium py-1">{getGroupDateTitle(date)}</h3>
+      <h3 className="text-sm font-medium py-1 flex justify-between items-center">
+        <span>{getGroupDateTitle(date)}</span>
+        <span className="text-xs text-muted-foreground">
+          {expensesSum > 0 && `- ${formatCurrency(expensesSum)}`}
+        </span>
+      </h3>
       <div className="space-y-2">
         {transactions.map((transaction) => (
           <TransactionItem
@@ -45,7 +62,7 @@ export function TransactionGroup({
             onEdit={onEdit}
             onDelete={onDelete}
             expandedTransactionId={expandedTransactionId}
-            setExpandedTransactionId={setExpandedTransactionId}
+            setExpandedTransactionId={onToggleExpand}
           />
         ))}
       </div>

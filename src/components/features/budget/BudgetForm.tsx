@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useBudgets } from '@/contexts/BudgetContext';
 import { popup } from '@telegram-apps/sdk-react';
 import { Budget } from '@/types';
 import { useScrollToInput } from '@/hooks/useScrollToInput';
@@ -17,6 +16,7 @@ import { BudgetFormFields } from './components/BudgetFormFields';
 import { BudgetFormFooter } from './components/BudgetFormFooter';
 import { budgetSchema, BudgetFormData } from './components/BudgetFormValidation';
 import { BudgetHandlers, BudgetFormControlProps } from './utils';
+import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
 
 interface BudgetFormProps extends BudgetFormControlProps, BudgetHandlers {
   budgetToEdit?: Budget | null;
@@ -29,7 +29,7 @@ export function BudgetForm({
   onBudgetSaved,
 }: BudgetFormProps) {
   useScrollToInput({ isOpen: open });
-  const { addBudget: addBudgetFromContext, updateBudget: updateBudgetFromContext } = useBudgets();
+  const { addBudget, updateBudget } = useBudgetsRedux();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formattedAmount, setFormattedAmount] = useState<string>('');
@@ -81,14 +81,14 @@ export function BudgetForm({
   };
 
   const handleUpdateBudget = async (budgetId: string, data: BudgetFormData) => {
-    const updated = await updateBudgetFromContext(budgetId, data.name, data.totalAmount);
+    const updated = await updateBudget(budgetId, data.name, data.totalAmount);
     if (!updated) {
-      throw new Error('Не удалось обновить бюджет через контекст.');
+      throw new Error('Не удалось обновить бюджет.');
     }
   };
 
   const handleCreateBudget = async (data: BudgetFormData) => {
-    const newBudget = await addBudgetFromContext(data.name, data.totalAmount);
+    const newBudget = await addBudget(data.name, data.totalAmount);
     if (!newBudget) {
       throw new Error('Не удалось добавить бюджет. Попробуйте снова.');
     }

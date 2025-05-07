@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react';
-import { useBudgets } from '@/contexts/BudgetContext';
 import { Category } from '@/types';
 import { PlusCircle } from 'lucide-react';
 import { CategoryForm } from './CategoryForm';
@@ -10,9 +9,10 @@ import { ExpandableCategoryItem } from './ExpandableCategoryItem';
 import { BudgetLimitsWarning } from './BudgetLimitsWarning';
 import { calculateTotalLimits, chunkArray } from '../utils/categoryUtils';
 import { ActionButton } from '@/components/ui/action-button';
+import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
 
 export function CategoryList() {
-  const { currentBudget } = useBudgets();
+  const { currentBudget } = useBudgetsRedux();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);

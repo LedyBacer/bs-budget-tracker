@@ -1,11 +1,12 @@
 // src/components/features/budget/BudgetList.tsx
 import { useState } from 'react';
-import { useBudgets } from '@/contexts/BudgetContext';
 import { hapticFeedback } from '@telegram-apps/sdk';
 import { BudgetForm } from './BudgetForm';
 import { BudgetListHeader } from './components/BudgetListHeader';
 import { BudgetLoadingState, BudgetErrorState, EmptyBudgetState } from './components/BudgetStates';
 import { ExpandableBudgetList } from './components/ExpandableBudgetList';
+import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
+import { mediumHaptic } from '@/lib/utils';
 
 export function BudgetList() {
   const {
@@ -15,7 +16,7 @@ export function BudgetList() {
     isLoadingBudgets,
     errorLoadingBudgets,
     reloadBudgets,
-  } = useBudgets();
+  } = useBudgetsRedux();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isListExpanded, setIsListExpanded] = useState(false);
 
@@ -29,9 +30,7 @@ export function BudgetList() {
   };
 
   const handleTitleClick = () => {
-    if (hapticFeedback.impactOccurred.isAvailable()) {
-      hapticFeedback.impactOccurred('medium');
-    }
+    mediumHaptic();
     
     setIsListExpanded(!isListExpanded);
   };

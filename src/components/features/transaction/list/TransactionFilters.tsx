@@ -57,14 +57,14 @@ export function TransactionFilters({
   const handleCategoryChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      categoryId: value,
+      categoryId: value === "all" ? "" : value,
     });
   };
 
   const handleUserChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      userId: value,
+      userId: value === "all" ? "" : value,
     });
   };
 
@@ -203,14 +203,14 @@ export function TransactionFilters({
           <div className="space-y-2">
             <label className="text-sm font-medium">Категория</label>
             <Select
-              value={filters.categoryId}
+              value={filters.categoryId || "all"}
               onValueChange={handleCategoryChange}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Выберите категорию" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Все категории</SelectItem>
+                <SelectItem value="all">Все категории</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
@@ -225,14 +225,14 @@ export function TransactionFilters({
             <div className="space-y-2">
               <label className="text-sm font-medium">Пользователь</label>
               <Select
-                value={filters.userId}
+                value={filters.userId || "all"}
                 onValueChange={handleUserChange}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Выберите пользователя" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Все пользователи</SelectItem>
+                  <SelectItem value="all">Все пользователи</SelectItem>
                   {uniqueUsers.map((user) => (
                     <SelectItem key={user.id} value={String(user.id)}>
                       {user.first_name} {user.last_name}
