@@ -163,4 +163,54 @@ export function TransactionListSkeleton() {
       </div>
     </div>
   );
+}
+
+export function TransactionItemSkeleton() {
+  return (
+    <div className="bg-card text-card-foreground rounded-lg border p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <Skeleton className="h-5 w-5" />
+          <div className="flex-1 min-w-0">
+            <Skeleton className="h-5 w-32" />
+            <div className="mt-1 flex items-center space-x-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function TransactionGroupSkeleton() {
+  return (
+    <div className="space-y-2">
+      {/* Заголовок группы с датой и суммой */}
+      <h3 className="text-sm font-medium py-1 flex justify-between items-center">
+        <Skeleton className="h-5 w-24" /> {/* Скелетон для даты */}
+        <Skeleton className="h-4 w-16" /> {/* Скелетон для суммы */}
+      </h3>
+      {/* Элементы транзакций в группе */}
+      <div className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <TransactionItemSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function TransactionLoadingSkeleton() {
+  return (
+    <div className="w-full space-y-6">
+      {Array.from({ length: 2 }).map((_, i) => (
+        <TransactionGroupSkeleton key={i} />
+      ))}
+    </div>
+  );
 } 

@@ -4,42 +4,46 @@ import {
   useLaunchParams,
   miniApp,
   backButton,
-  themeParams,
+  // themeParams, // Не используется напрямую здесь, но инициализируется в main.tsx
 } from '@telegram-apps/sdk-react';
 import { WebAppUser } from '@/types';
 import { ThemeProvider } from '@/components/theme-provider';
-import { Header } from '@/components/layout/Header';
+// import { Header } from '@/components/layout/Header'; // Header пока закомментирован
 import { Footer } from '@/components/layout/Footer';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { BudgetList } from '@/components/features/budget/BudgetList';
 import { BudgetDetails } from '@/components/features/budget/BudgetDetails';
 import { CategoryList } from '@/components/features/category';
-import { 
-  TransactionList, 
-  SimpleTransactionForm
-} from '@/components/features/transaction';
+import { TransactionList, SimpleTransactionForm } from '@/components/features/transaction';
 import {
   BudgetListSkeleton,
   BudgetDetailsSkeleton,
   CategoryListSkeleton,
   TransactionListSkeleton,
-  Skeleton,
+  // Skeleton, // Skeleton используется внутри других скелетонов
 } from '@/components/ui/skeletons';
 import { PlusCircle } from 'lucide-react';
 import { ActionButton } from '@/components/ui/action-button';
 import { ReduxProvider } from '@/lib/redux/provider';
 import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
-import { useAppSelector } from '@/lib/redux/hooks';
-import { selectDataVersion } from '@/lib/redux/slices/budgetsSlice';
+// import { useAppSelector } from '@/lib/redux/hooks'; // Не нужен, если dataVersion удален
+// import { selectDataVersion } from '@/lib/redux/slices/budgetsSlice'; // dataVersion удален
 
 function AppContent() {
-  const { currentBudget, allBudgets, isLoadingBudgets, errorLoadingBudgets, reloadBudgets, selectBudget } = useBudgetsRedux();
-  const dataVersion = useAppSelector(selectDataVersion);
+  const {
+    currentBudget,
+    allBudgets,
+    isLoadingBudgets,
+    errorLoadingBudgets,
+    reloadBudgets,
+    selectBudget,
+  } = useBudgetsRedux();
+  // const dataVersion = useAppSelector(selectDataVersion); // УДАЛЕНО
   const launchParams = useLaunchParams();
   const [isSimpleFormOpen, setIsSimpleFormOpen] = useState(false);
-  const transactionListRef = useRef<{ loadData: () => Promise<void> } | null>(null);
+  const transactionListRef = useRef<{ loadData: (filters?: any) => Promise<void> } | null>(null); // Тип loadData может измениться
 
-  const currentUser =
+  const currentUser = // Типизация WebAppUser уже есть в types/telegram.ts
     launchParams.tgWebAppData &&
     typeof launchParams.tgWebAppData === 'object' &&
     'user' in launchParams.tgWebAppData
@@ -58,47 +62,70 @@ function AppContent() {
 
   useEffect(() => {
     const handleBackClick = () => {
-      if (miniApp.close.isAvailable()) {
+      // Вместо miniApp.close() можно реализовать навигацию назад внутри приложения, если она есть.
+      // Пока оставим закрытие, если это основное поведение кнопки "Назад" на главном экране.
+      if (miniApp.close.isAvailable && miniApp.close.isAvailable()) {
         miniApp.close();
+      } else {
+        // Возможно, здесь стоит добавить логику для history.back() если используется роутер
+        console.log('Back button clicked, but miniApp.close is not available.');
       }
     };
-    backButton.show.ifAvailable();
-    const cleanup = backButton.onClick.isAvailable()
-      ? backButton.onClick(handleBackClick)
-      : undefined;
+    if (backButton.show.isAvailable && backButton.show.isAvailable()) {
+      backButton.show();
+    }
+    const cleanup =
+      backButton.onClick.isAvailable && backButton.onClick.isAvailable()
+        ? backButton.onClick(handleBackClick)
+        : undefined;
     return () => cleanup?.();
   }, []);
 
-  const refreshDependentData = async () => {
-    await reloadBudgets(); 
+  // Эта функция теперь будет вызываться TransactionList напрямую через свои хуки
+  // или через проброшенный reloadBudgets (если изменение транзакции должно обновить сам бюджет)
+  const refreshBudgetAndCategoryData = async () => {
+    // console.log('App.tsx: Refreshing budget and category data');
+    await reloadBudgets();
+    // Категории и транзакции будут обновляться через свои хуки и инвалидацию тегов RTK Query
   };
 
   return (
     <div className="bg-background text-foreground flex min-h-screen flex-col">
       {/* <Header /> */}
       <PageWrapper>
-        {isLoadingBudgets ? (
+        {isLoadingBudgets && !allBudgets.length ? ( // Показываем скелет только если совсем нет данных
           <BudgetListSkeleton />
         ) : (
           <BudgetList />
         )}
 
-        {isLoadingBudgets ? (
+        {currentBudget && isLoadingBudgets ? ( // Если есть currentBudget, но он обновляется
           <>
             <BudgetDetailsSkeleton />
             <div className="mb-6">
-              <Skeleton className="h-10 w-full" />
+              {/* <Skeleton className="h-10 w-full" /> // Заменено на ActionButton skeleton если нужно */}
+              <ActionButton
+                onClick={() => {}}
+                text="Добавить транзакцию"
+                icon={<PlusCircle className="mr-2 h-4 w-4" />}
+                variant="default"
+                size="lg"
+                fullWidth={true}
+                disabled={true}
+                className="bg-muted animate-pulse"
+              />
             </div>
             <CategoryListSkeleton />
             <TransactionListSkeleton />
           </>
-        ) : errorLoadingBudgets ? (
-          <div className="text-destructive p-4 text-center">Ошибка загрузки данных.</div>
+        ) : errorLoadingBudgets && !currentBudget ? ( // Ошибка только если нет текущего бюджета
+          <div className="text-destructive p-4 text-center">Ошибка загрузки данных бюджета.</div>
         ) : currentBudget ? (
           <>
-            <BudgetDetails key={`${currentBudget.id}-${dataVersion}`} />
+            {/* key={`${currentBudget.id}-${dataVersion}`} // УДАЛЕНО dataVersion */}
+            <BudgetDetails key={currentBudget.id} />
             <div className="mb-6">
-              <ActionButton 
+              <ActionButton
                 onClick={() => setIsSimpleFormOpen(true)}
                 text="Добавить транзакцию"
                 icon={<PlusCircle className="mr-2 h-4 w-4" />}
@@ -107,34 +134,41 @@ function AppContent() {
                 fullWidth={true}
               />
             </div>
-            <CategoryList key={`${currentBudget.id}-categories-${dataVersion}`} />
-            <TransactionList 
-              ref={transactionListRef} 
+            {/* key={`${currentBudget.id}-categories-${dataVersion}`} // УДАЛЕНО dataVersion */}
+            <CategoryList key={`${currentBudget.id}-categories`} />{' '}
+            {/* Можно оставить key по ID бюджета для сброса состояния списка категорий при смене бюджета */}
+            <TransactionList
+              ref={transactionListRef}
               budgetId={currentBudget.id}
-              onMajorDataChange={refreshDependentData} 
+              // onMajorDataChange больше не нужен здесь, т.к. инвалидация тегов RTK Query должна обновлять бюджеты
+              // onMajorDataChange={refreshBudgetAndCategoryData}
+              key={`${currentBudget.id}-transactions`}
             />
-            {currentBudget && (
-              <SimpleTransactionForm
-                budgetId={currentBudget.id}
-                open={isSimpleFormOpen}
-                onOpenChange={setIsSimpleFormOpen}
-                onTransactionSaved={async () => {
-                  if (transactionListRef.current) {
-                    await transactionListRef.current.loadData(); 
-                  }
-                  await refreshDependentData(); 
-                }}
-              />
-            )}
+            {/* SimpleTransactionForm для текущего бюджета */}
+            <SimpleTransactionForm
+              budgetId={currentBudget.id}
+              open={isSimpleFormOpen}
+              onOpenChange={setIsSimpleFormOpen}
+              onTransactionSaved={async () => {
+                // После сохранения транзакции через простую форму:
+                // 1. Обновить список транзакций (если TransactionList сам это не делает через подписку)
+                if (transactionListRef.current?.loadData) {
+                  // transactionListRef.current.loadData(); // reloadData теперь принимает фильтры
+                  // и будет вызван изнутри TransactionList при смене фильтров
+                }
+                // 2. Обновить данные бюджета и категорий (RTK Query должен сделать это через инвалидацию)
+                // await refreshBudgetAndCategoryData(); // Это вызовет reloadBudgets()
+                // Мутации транзакций уже инвалидируют теги бюджетов и категорий
+              }}
+            />
           </>
         ) : (
-          !isLoadingBudgets && (
+          !isLoadingBudgets && ( // Если не загрузка и нет currentBudget (и нет ошибки)
             <div className="text-muted-foreground p-4 text-center">
               Создайте или выберите бюджет для начала.
             </div>
           )
         )}
-        
       </PageWrapper>
       <Footer />
     </div>

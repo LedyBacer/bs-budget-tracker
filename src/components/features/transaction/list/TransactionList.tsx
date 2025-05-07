@@ -1,67 +1,128 @@
-import { useState, forwardRef, useImperativeHandle, useEffect } from 'react';
+// components/features/transaction/list/TransactionList.tsx
+import { useState, forwardRef, useImperativeHandle, useEffect, useCallback } from 'react';
 import { Transaction } from '@/types';
 import { FullTransactionForm } from '../forms/FullTransactionForm';
-import { TransactionListSkeleton } from '@/components/ui/skeletons';
-import { useInView } from 'react-intersection-observer';
-import { TransactionFilters } from './TransactionFilters';
+import { TransactionListSkeleton, TransactionLoadingSkeleton } from '@/components/ui/skeletons';
+import { useInView } from 'react-intersection-observer'; // Убедитесь, что версия поддерживает 'skip' или удалите его
+import { TransactionFilters, FiltersState } from './TransactionFilters';
 import { TransactionGroup } from './TransactionGroup';
 import { AddTransactionButtonContainer } from './AddTransactionButtonContainer';
-import { useTransactionFilters } from '../hooks/useTransactionFilters';
 import { useTransactionGroups } from '../hooks/useTransactionGroups';
 import { useTransactionListRedux } from '@/hooks/useTransactionListRedux';
+import { useGetDailyExpenseSummariesQuery } from '@/lib/redux/api';
 
 export interface TransactionListRef {
-  loadData: () => Promise<void>;
+  reloadData: (filters?: Partial<FiltersState>) => Promise<void>;
 }
 
 interface TransactionListProps {
   budgetId: string;
-  onMajorDataChange?: () => void | Promise<void>;
 }
 
 export const TransactionList = forwardRef<TransactionListRef, TransactionListProps>(
-  ({ budgetId, onMajorDataChange }, ref) => {
-    // Используем Redux хук для транзакций
+  ({ budgetId }, ref) => {
+    const [filters, setFilters] = useState<FiltersState>({
+      dateRange: 'all',
+      startDate: '',
+      endDate: '',
+      userId: '',
+      type: 'all',
+      categoryId: '',
+    });
+
     const {
-      transactions,
+      transactions: accumulatedAndEnrichedTransactions,
       categories,
       uniqueUsers,
-      isLoading,
+      isLoading, // это isActuallyLoadingInitial
+      isLoadingMore, // это isActuallyLoadingMore
+      errorLoading,
       hasMoreTransactions,
       loadMore,
-      reloadData,
-      deleteTransaction
-    } = useTransactionListRedux(budgetId);
-    
-    // Состояния для управления UI
+      reloadData: reloadTransactionsFromHook,
+      deleteTransaction,
+      totalAccumulatedCount,
+      totalFilteredCount,
+    } = useTransactionListRedux(budgetId, filters);
+
+    const { groupedTransactions, sortedGroupKeys } = useTransactionGroups(
+      accumulatedAndEnrichedTransactions
+    );
+
+    const getSummaryDateRange = useCallback(() => {
+      if (filters.dateRange === 'custom' && filters.startDate && filters.endDate) {
+        return { startDate: filters.startDate, endDate: filters.endDate };
+      }
+      if (filters.dateRange === 'all') {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - 90);
+        return {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+        };
+      }
+      return undefined;
+    }, [filters]);
+
+    const summaryDateRange = getSummaryDateRange();
+
+    const { data: dailySummaries } = useGetDailyExpenseSummariesQuery(
+      { budgetId, dateRange: summaryDateRange! },
+      { skip: !budgetId || !summaryDateRange }
+    );
+
     const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
-    
-    // InView хук для бесконечной прокрутки
-    const { ref: inViewRef, inView } = useInView();
 
-    // Перемещаем логику загрузки в useEffect
+    const { ref: inViewRef, inView } = useInView({
+      threshold: 0.1,
+      rootMargin: '0px 0px 300px 0px',
+      // Если ваша версия react-intersection-observer < 9, опции 'skip' нет.
+      // В этом случае, условие !isLoadingMore в useEffect ниже будет ключевым.
+      // skip: isLoadingMore, // Попробуйте закомментировать, если вызывает ошибку
+    });
+
     useEffect(() => {
-      if (inView && hasMoreTransactions && !isLoading) {
+      //   console.log(
+      //       `[TransactionList useInView] InView: ${inView}, isLoading: ${isLoading}, isLoadingMore: ${isLoadingMore}, hasMore: ${hasMoreTransactions}, totalAcc: ${totalAccumulatedCount}, totalFiltered: ${totalFilteredCount}`
+      //   );
+      if (inView && !isLoading && !isLoadingMore && hasMoreTransactions && budgetId) {
+        // console.log('[TransactionList useInView] Calling loadMore()');
         loadMore();
       }
-    }, [inView, hasMoreTransactions, isLoading, loadMore]);
+    }, [
+      inView,
+      isLoading,
+      isLoadingMore,
+      hasMoreTransactions,
+      loadMore,
+      budgetId,
+      totalAccumulatedCount,
+      totalFilteredCount,
+    ]);
 
-    // Применяем фильтры к транзакциям
-    const { filters, updateFilters, filteredTransactions } = useTransactionFilters(transactions);
-    
-    // Группируем отфильтрованные транзакции по дате
-    const { groupedTransactions, sortedGroupKeys } = useTransactionGroups(filteredTransactions);
-
-    // Предоставляем функцию загрузки данных через ref
-    useImperativeHandle(ref, () => ({
-      loadData: async () => {
-        await reloadData();
+    const handleFiltersChange = useCallback(
+      (newFilters: FiltersState) => {
+        setFilters(newFilters);
+        reloadTransactionsFromHook(newFilters);
       },
-    }));
+      [reloadTransactionsFromHook]
+    );
 
-    // Функции для управления транзакциями
+    useImperativeHandle(
+      ref,
+      () => ({
+        reloadData: async (newFilters?: Partial<FiltersState>) => {
+          const updatedFilters = { ...filters, ...newFilters };
+          setFilters(updatedFilters);
+          await reloadTransactionsFromHook(updatedFilters);
+        },
+      }),
+      [filters, reloadTransactionsFromHook]
+    );
+
     const handleAddTransaction = () => {
       setTransactionToEdit(null);
       setIsEditModalOpen(true);
@@ -73,88 +134,95 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
     };
 
     const handleDeleteTransaction = async (transaction: Transaction) => {
-      try {
-        await deleteTransaction(transaction.id);
-        // Сигнализируем о необходимости глобального обновления, если callback передан
-        if (onMajorDataChange) {
-          await onMajorDataChange();
-        }
-      } catch (error) {
-        console.error('Failed to delete transaction:', error);
-      }
+      await deleteTransaction(transaction.id);
+      setExpandedTransactionId(null);
     };
 
     const handleTransactionSaved = async () => {
-      // Перезагружаем все данные после сохранения транзакции
-      await reloadData();
-
-      // Сигнализируем о необходимости глобального обновления, если callback передан
-      if (onMajorDataChange) {
-        await onMajorDataChange();
+      // console.log("Transaction saved. Reloading transaction list to page 1 with current filters:", filters);
+      if (reloadTransactionsFromHook) {
+        // Перезагружаем список с текущими локальными фильтрами,
+        // что приведет к сбросу на первую страницу.
+        await reloadTransactionsFromHook(filters);
       }
+      // Связанные данные бюджета и категорий должны обновиться
+      // через инвалидацию тегов RTK Query.
     };
 
-    // Отображаем скелетон загрузки, если данные ещё не загружены
-    if (isLoading && transactions.length === 0) {
+    if (!budgetId) {
+      return <div className="text-muted-foreground py-8 text-center">Выберите бюджет.</div>;
+    }
+
+    // Показываем главный скелетон только если идет начальная загрузка И НЕТ накопленных данных
+    if (isLoading && totalAccumulatedCount === 0 && !errorLoading) {
       return <TransactionListSkeleton />;
     }
 
     return (
       <div className="space-y-1">
-        {/* Кнопка добавления */}
-        <AddTransactionButtonContainer 
-          onClick={handleAddTransaction} 
-          title="Транзакции" // Добавляем заголовок
-        />
-
-        {/* Фильтры */}
+        <AddTransactionButtonContainer onClick={handleAddTransaction} title="Транзакции" />
         <TransactionFilters
           filters={filters}
-          onFiltersChange={updateFilters}
+          onFiltersChange={handleFiltersChange}
           categories={categories}
           uniqueUsers={uniqueUsers}
         />
 
-        {/* Список транзакций, сгруппированных по дате */}
+        {errorLoading && (
+          <div className="text-destructive p-4 text-center">
+            Ошибка загрузки транзакций: {errorLoading.message}
+          </div>
+        )}
+
         <div className="space-y-6">
-          {filteredTransactions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Нет транзакций, соответствующих фильтрам
+          {/* Сообщение "Нет транзакций" */}
+          {!isLoading && totalAccumulatedCount === 0 && !errorLoading && (
+            <div className="text-muted-foreground py-8 text-center">
+              Нет транзакций, соответствующих фильтрам.
             </div>
-          ) : (
-            sortedGroupKeys.map((dateKey) => (
-              <TransactionGroup
-                key={dateKey}
-                dateKey={dateKey}
-                transactions={groupedTransactions[dateKey]}
-                expandedTransactionId={expandedTransactionId}
-                onToggleExpand={setExpandedTransactionId}
-                onEdit={handleEditTransaction}
-                onDelete={handleDeleteTransaction}
-              />
-            ))
           )}
 
-          {/* Индикатор загрузки при прокрутке */}
+          {sortedGroupKeys.map((dateKey) => (
+            <TransactionGroup
+              key={dateKey}
+              dateKey={dateKey}
+              transactions={groupedTransactions[dateKey]}
+              dailyTotalExpense={dailySummaries?.[dateKey] || 0}
+              expandedTransactionId={expandedTransactionId}
+              onToggleExpand={setExpandedTransactionId}
+              onEdit={handleEditTransaction}
+              onDelete={handleDeleteTransaction}
+            />
+          ))}
+
+          {/* Sentinel и скелетон догрузки */}
+          {/* Показываем sentinel только если ЕСТЬ ЕЩЁ ЧТО ГРУЗИТЬ */}
           {hasMoreTransactions && (
-            <div ref={inViewRef} className="flex justify-center py-4">
-              {isLoading && transactions.length > 0 && (
-                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
-              )}
+            <div ref={inViewRef} className="flex flex-col items-center justify-center py-4">
+              {/* isLoadingMore && <TransactionLoadingSkeleton /> */}
+              <TransactionLoadingSkeleton />
+            </div>
+          )}
+
+          {/* Сообщение "Транзакций больше нет" */}
+          {!hasMoreTransactions && totalAccumulatedCount > 0 && !isLoading && !isLoadingMore && (
+            <div className="text-muted-foreground py-4 text-center text-sm">
+              Транзакций больше нет
             </div>
           )}
         </div>
 
-        {/* Форма добавления/редактирования транзакции */}
-        <FullTransactionForm
-          budgetId={budgetId}
-          transactionToEdit={transactionToEdit}
-          categories={categories}
-          open={isEditModalOpen}
-          onOpenChange={setIsEditModalOpen}
-          onTransactionSaved={handleTransactionSaved}
-        />
+        {budgetId && (
+          <FullTransactionForm
+            budgetId={budgetId}
+            transactionToEdit={transactionToEdit}
+            categories={categories}
+            open={isEditModalOpen}
+            onOpenChange={setIsEditModalOpen}
+            onTransactionSaved={handleTransactionSaved}
+          />
+        )}
       </div>
     );
   }
-); 
+);

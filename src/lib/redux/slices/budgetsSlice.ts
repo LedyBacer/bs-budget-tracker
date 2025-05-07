@@ -1,14 +1,13 @@
+// lib/redux/slices/budgetsSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 
 interface BudgetsState {
   currentBudgetId: string | null;
-  dataVersion: number; // Для обновления компонентов при изменении данных
 }
 
 const initialState: BudgetsState = {
   currentBudgetId: null,
-  dataVersion: 0,
 };
 
 export const budgetsSlice = createSlice({
@@ -18,16 +17,12 @@ export const budgetsSlice = createSlice({
     selectBudget: (state, action: PayloadAction<string | null>) => {
       state.currentBudgetId = action.payload;
     },
-    incrementDataVersion: (state) => {
-      state.dataVersion += 1;
-    },
   },
 });
 
-export const { selectBudget, incrementDataVersion } = budgetsSlice.actions;
+export const { selectBudget } = budgetsSlice.actions;
 
-// Селекторы
+// Селектор
 export const selectCurrentBudgetId = (state: RootState) => state.budgets.currentBudgetId;
-export const selectDataVersion = (state: RootState) => state.budgets.dataVersion;
 
-export default budgetsSlice.reducer; 
+export default budgetsSlice.reducer;
