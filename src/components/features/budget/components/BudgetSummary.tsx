@@ -16,7 +16,7 @@ export function BudgetSummary({ budget, isExpanded }: BudgetSummaryProps) {
 
       <div className="flex justify-between">
         <span className="text-muted-foreground">Общая сумма:</span>
-        <span className="font-medium">{formatCurrency(budget.totalAmount)}</span>
+        <span className="font-medium">{formatCurrency(budget.total_amount)}</span>
       </div>
 
       <div
@@ -30,13 +30,13 @@ export function BudgetSummary({ budget, isExpanded }: BudgetSummaryProps) {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Расходы:</span>
               <span className="font-medium text-red-600">
-                {formatCurrency(budget.totalExpense)}
+                {formatCurrency(budget.total_expense)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Доходы:</span>
               <span className="font-medium text-green-600">
-                {formatCurrency(budget.totalIncome)}
+                {formatCurrency(budget.total_income)}
               </span>
             </div>
           </div>

@@ -47,11 +47,11 @@ export function BudgetForm({
   // Сброс и установка значений при открытии/смене режима
   useEffect(() => {
     if (open) {
-      const initialAmount = budgetToEdit?.totalAmount || 0;
+      const initialAmount = budgetToEdit?.total_amount || 0;
       setFormattedAmount(initialAmount ? formatNumberWithSpaces(initialAmount) : '');
       reset({
         name: budgetToEdit?.name || '',
-        totalAmount: initialAmount,
+        total_amount: initialAmount,
       });
       setSubmitError(null);
     } else {
@@ -81,14 +81,14 @@ export function BudgetForm({
   };
 
   const handleUpdateBudget = async (budgetId: string, data: BudgetFormData) => {
-    const updated = await updateBudget(budgetId, data.name, data.totalAmount);
+    const updated = await updateBudget(budgetId, data.name, data.total_amount);
     if (!updated) {
       throw new Error('Не удалось обновить бюджет.');
     }
   };
 
   const handleCreateBudget = async (data: BudgetFormData) => {
-    const newBudget = await addBudget(data.name, data.totalAmount);
+    const newBudget = await addBudget(data.name, data.total_amount);
     if (!newBudget) {
       throw new Error('Не удалось добавить бюджет. Попробуйте снова.');
     }
@@ -105,7 +105,7 @@ export function BudgetForm({
     const value = e.target.value;
     const formatted = formatNumberWithSpaces(value);
     setFormattedAmount(formatted);
-    setValue('totalAmount', parseFormattedNumber(value));
+    setValue('total_amount', parseFormattedNumber(value));
   };
 
   return (

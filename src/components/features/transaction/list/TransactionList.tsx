@@ -1,15 +1,17 @@
 // components/features/transaction/list/TransactionList.tsx
-import { useState, forwardRef, useImperativeHandle, useEffect, useCallback } from 'react';
+import { useState, forwardRef, useImperativeHandle, useEffect, useCallback, useMemo } from 'react'; // Добавлен useMemo
 import { Transaction } from '@/types';
 import { FullTransactionForm } from '../forms/FullTransactionForm';
 import { TransactionListSkeleton, TransactionLoadingSkeleton } from '@/components/ui/skeletons';
-import { useInView } from 'react-intersection-observer'; // Убедитесь, что версия поддерживает 'skip' или удалите его
+import { useInView } from 'react-intersection-observer';
 import { TransactionFilters, FiltersState } from './TransactionFilters';
 import { TransactionGroup } from './TransactionGroup';
 import { AddTransactionButtonContainer } from './AddTransactionButtonContainer';
 import { useTransactionGroups } from '../hooks/useTransactionGroups';
 import { useTransactionListRedux } from '@/hooks/useTransactionListRedux';
-import { useGetDailyExpenseSummariesQuery } from '@/lib/redux/api';
+import { useGetTransactionsDateSummaryQuery } from '@/lib/redux/api';
+import { DateTransactionSummary } from '@/types/api';
+import { format, subDays } from 'date-fns'; // Для дат по умолчанию
 
 export interface TransactionListRef {
   reloadData: (filters?: Partial<FiltersState>) => Promise<void>;
@@ -18,6 +20,9 @@ export interface TransactionListRef {
 interface TransactionListProps {
   budgetId: string;
 }
+
+// Значение по умолчанию для диапазона дат, если в фильтрах не выбран 'custom'
+const DEFAULT_SUMMARY_DAYS_RANGE = 90;
 
 export const TransactionList = forwardRef<TransactionListRef, TransactionListProps>(
   ({ budgetId }, ref) => {
@@ -34,43 +39,53 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
       transactions: accumulatedAndEnrichedTransactions,
       categories,
       uniqueUsers,
-      isLoading, // это isActuallyLoadingInitial
-      isLoadingMore, // это isActuallyLoadingMore
+      isLoading,
+      isLoadingMore,
       errorLoading,
       hasMoreTransactions,
       loadMore,
       reloadData: reloadTransactionsFromHook,
       deleteTransaction,
-      totalAccumulatedCount,
-      totalFilteredCount,
+      // totalAccumulatedCount, // Не используется напрямую здесь для summary
+      // totalFilteredCount, // Не используется напрямую здесь для summary
     } = useTransactionListRedux(budgetId, filters);
 
     const { groupedTransactions, sortedGroupKeys } = useTransactionGroups(
       accumulatedAndEnrichedTransactions
     );
 
-    const getSummaryDateRange = useCallback(() => {
-      if (filters.dateRange === 'custom' && filters.startDate && filters.endDate) {
-        return { startDate: filters.startDate, endDate: filters.endDate };
-      }
-      if (filters.dateRange === 'all') {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - 90);
-        return {
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-        };
-      }
-      return undefined;
-    }, [filters]);
+    // Определяем диапазон дат для запроса сумм
+    const summaryDateParams = useMemo(() => {
+      let startDateStr: string;
+      let endDateStr: string | undefined;
 
-    const summaryDateRange = getSummaryDateRange();
+      if (filters.dateRange === 'custom' && filters.startDate) {
+        startDateStr = filters.startDate;
+        endDateStr = filters.endDate || filters.startDate; // Если endDate нет, используем startDate
+      } else {
+        // Для 'all', 'thisWeek', 'lastWeek' и т.д., или если custom не валиден,
+        // берем последние N дней.
+        // Или можно сделать более сложную логику на основе filters.dateRange,
+        // но для сумм может быть проще запросить широкий диапазон.
+        const today = new Date();
+        endDateStr = format(today, 'yyyy-MM-dd');
+        startDateStr = format(subDays(today, DEFAULT_SUMMARY_DAYS_RANGE - 1), 'yyyy-MM-dd');
+      }
+      return { startDate: startDateStr, endDate: endDateStr };
+    }, [filters.dateRange, filters.startDate, filters.endDate]);
 
-    const { data: dailySummaries } = useGetDailyExpenseSummariesQuery(
-      { budgetId, dateRange: summaryDateRange! },
-      { skip: !budgetId || !summaryDateRange }
-    );
+    const { data: dateSummaryResponse, isLoading: isLoadingSummary } =
+      useGetTransactionsDateSummaryQuery(
+        {
+          budget_id: budgetId,
+          start_date: summaryDateParams.startDate,
+          end_date: summaryDateParams.endDate,
+          transaction_type: 'expense', // Получаем только расходы для отображения в группах
+        },
+        { skip: !budgetId || !summaryDateParams.startDate } // Пропускаем, если нет budgetId или startDate
+      );
+
+    const dailySummaries = dateSummaryResponse?.summaries || {};
 
     const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -79,33 +94,18 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
     const { ref: inViewRef, inView } = useInView({
       threshold: 0.1,
       rootMargin: '0px 0px 300px 0px',
-      // Если ваша версия react-intersection-observer < 9, опции 'skip' нет.
-      // В этом случае, условие !isLoadingMore в useEffect ниже будет ключевым.
-      // skip: isLoadingMore, // Попробуйте закомментировать, если вызывает ошибку
     });
 
     useEffect(() => {
-      //   console.log(
-      //       `[TransactionList useInView] InView: ${inView}, isLoading: ${isLoading}, isLoadingMore: ${isLoadingMore}, hasMore: ${hasMoreTransactions}, totalAcc: ${totalAccumulatedCount}, totalFiltered: ${totalFilteredCount}`
-      //   );
       if (inView && !isLoading && !isLoadingMore && hasMoreTransactions && budgetId) {
-        // console.log('[TransactionList useInView] Calling loadMore()');
         loadMore();
       }
-    }, [
-      inView,
-      isLoading,
-      isLoadingMore,
-      hasMoreTransactions,
-      loadMore,
-      budgetId,
-      totalAccumulatedCount,
-      totalFilteredCount,
-    ]);
+    }, [inView, isLoading, isLoadingMore, hasMoreTransactions, loadMore, budgetId]);
 
     const handleFiltersChange = useCallback(
       (newFilters: FiltersState) => {
         setFilters(newFilters);
+        setExpandedTransactionId(null); // Сбрасываем раскрытую транзакцию при смене фильтров
         reloadTransactionsFromHook(newFilters);
       },
       [reloadTransactionsFromHook]
@@ -117,6 +117,7 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
         reloadData: async (newFilters?: Partial<FiltersState>) => {
           const updatedFilters = { ...filters, ...newFilters };
           setFilters(updatedFilters);
+          setExpandedTransactionId(null);
           await reloadTransactionsFromHook(updatedFilters);
         },
       }),
@@ -139,21 +140,18 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
     };
 
     const handleTransactionSaved = async () => {
-      // console.log("Transaction saved. Reloading transaction list to page 1 with current filters:", filters);
       if (reloadTransactionsFromHook) {
-        // Перезагружаем список с текущими локальными фильтрами,
-        // что приведет к сбросу на первую страницу.
-        await reloadTransactionsFromHook(filters);
+        await reloadTransactionsFromHook(filters); // Перезагружаем с текущими фильтрами
       }
-      // Связанные данные бюджета и категорий должны обновиться
-      // через инвалидацию тегов RTK Query.
     };
+
+    // Определяем, сколько всего транзакций загружено для текущих фильтров
+    const totalAccumulatedCount = accumulatedAndEnrichedTransactions.length;
 
     if (!budgetId) {
       return <div className="text-muted-foreground py-8 text-center">Выберите бюджет.</div>;
     }
 
-    // Показываем главный скелетон только если идет начальная загрузка И НЕТ накопленных данных
     if (isLoading && totalAccumulatedCount === 0 && !errorLoading) {
       return <TransactionListSkeleton />;
     }
@@ -175,10 +173,16 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
         )}
 
         <div className="space-y-6">
-          {/* Сообщение "Нет транзакций" */}
           {!isLoading && totalAccumulatedCount === 0 && !errorLoading && (
             <div className="text-muted-foreground py-8 text-center">
               Нет транзакций, соответствующих фильтрам.
+            </div>
+          )}
+
+          {/* Показывать скелетон загрузки сумм, если они еще грузятся и есть транзакции */}
+          {isLoadingSummary && totalAccumulatedCount > 0 && (
+            <div className="text-muted-foreground py-4 text-center text-sm">
+              Загрузка сумм за день...
             </div>
           )}
 
@@ -187,7 +191,7 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
               key={dateKey}
               dateKey={dateKey}
               transactions={groupedTransactions[dateKey]}
-              dailyTotalExpense={dailySummaries?.[dateKey] || 0}
+              dailyTotalExpense={(!isLoadingSummary && dailySummaries[dateKey]) || 0}
               expandedTransactionId={expandedTransactionId}
               onToggleExpand={setExpandedTransactionId}
               onEdit={handleEditTransaction}
@@ -195,16 +199,12 @@ export const TransactionList = forwardRef<TransactionListRef, TransactionListPro
             />
           ))}
 
-          {/* Sentinel и скелетон догрузки */}
-          {/* Показываем sentinel только если ЕСТЬ ЕЩЁ ЧТО ГРУЗИТЬ */}
           {hasMoreTransactions && (
             <div ref={inViewRef} className="flex flex-col items-center justify-center py-4">
-              {/* isLoadingMore && <TransactionLoadingSkeleton /> */}
               <TransactionLoadingSkeleton />
             </div>
           )}
 
-          {/* Сообщение "Транзакций больше нет" */}
           {!hasMoreTransactions && totalAccumulatedCount > 0 && !isLoading && !isLoadingMore && (
             <div className="text-muted-foreground py-4 text-center text-sm">
               Транзакций больше нет

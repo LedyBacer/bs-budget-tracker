@@ -93,19 +93,15 @@ export function SimpleTransactionForm({
 
       // Используем Redux API вместо прямого вызова mockApi
       await addTransaction({
-        budgetId,
-        categoryId: data.categoryId,
-        type: data.type,
-        amount: data.amount,
-        author: {
-          id: currentUser.id,
-          first_name: currentUser.first_name,
-          last_name: currentUser.last_name,
-          username: currentUser.username,
-        },
-        name: '',
-        comment: '',
-        createdAt: new Date()
+        budget_id: budgetId,
+        data: {
+          type: data.type,
+          amount: data.amount,
+          name: '',
+          comment: '',
+          category_id: data.categoryId,
+          transaction_date: new Date().toISOString()
+        }
       }).unwrap();
       
       onTransactionSaved();

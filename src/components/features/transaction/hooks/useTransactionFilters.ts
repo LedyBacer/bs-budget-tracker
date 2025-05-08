@@ -41,17 +41,17 @@ export function useTransactionFilters(transactions: TransactionWithCategoryName[
       }
 
       // Фильтр по категории
-      if (filters.categoryId && transaction.categoryId !== filters.categoryId) {
+      if (filters.categoryId && transaction.category_id !== filters.categoryId) {
         return false;
       }
 
       // Фильтр по пользователю
-      if (filters.userId && transaction.author.id.toString() !== filters.userId) {
+      if (filters.userId && transaction.author && transaction.author.id.toString() !== filters.userId) {
         return false;
       }
 
       // Фильтр по дате
-      const transactionDate = new Date(transaction.createdAt);
+      const transactionDate = new Date(transaction.transaction_date);
       const now = new Date();
 
       // По диапазону дат

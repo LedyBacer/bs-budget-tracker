@@ -68,10 +68,10 @@ export const getFullFormDefaultValues = (transaction?: Transaction | null): Full
   return {
     type: transaction?.type || 'expense',
     amount: transaction?.amount || 0,
-    categoryId: transaction?.categoryId || '',
+    categoryId: transaction?.category_id || '',
     name: transaction?.name || '',
     comment: transaction?.comment || '',
-    createdAt: transaction?.createdAt || new Date(),
+    createdAt: transaction?.transaction_date ? new Date(transaction.transaction_date) : new Date(),
   };
 };
 

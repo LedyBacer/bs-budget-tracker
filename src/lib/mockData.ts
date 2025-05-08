@@ -146,12 +146,12 @@ let budgets: Budget[] = [
 ];
 
 let categories: Category[] = [
-  { id: 'c1', budgetId: 'b1', name: 'Еда', limit: 40000, spent: 0, income: 0, balance: 40000 },
+  { id: 'c1', budgetId: 'b1', name: 'Еда', limit_amount: 40000, spent: 0, income: 0, balance: 40000 },
   {
     id: 'c2',
     budgetId: 'b1',
     name: 'Транспорт',
-    limit: 10000,
+    limit_amount: 10000,
     spent: 0,
     income: 0,
     balance: 10000,
@@ -160,21 +160,21 @@ let categories: Category[] = [
     id: 'c3',
     budgetId: 'b1',
     name: 'Развлечения',
-    limit: 15000,
+    limit_amount: 15000,
     spent: 0,
     income: 0,
     balance: 15000,
   },
-  { id: 'c4', budgetId: 'b1', name: 'Кексы', limit: 100, spent: 0, income: 0, balance: 100 },
-  { id: 'c5', budgetId: 'b1', name: 'Сникеры', limit: 100, spent: 0, income: 0, balance: 100 },
-  { id: 'c6', budgetId: 'b1', name: 'Игры', limit: 15000, spent: 0, income: 0, balance: 15000 },
-  { id: 'c7', budgetId: 'b1', name: 'Прочее', limit: 1, spent: 0, income: 0, balance: 1 },
-  { id: 'c8', budgetId: 'b2', name: 'Отель', limit: 80000, spent: 0, income: 0, balance: 80000 },
+  { id: 'c4', budgetId: 'b1', name: 'Кексы', limit_amount: 100, spent: 0, income: 0, balance: 100 },
+  { id: 'c5', budgetId: 'b1', name: 'Сникеры', limit_amount: 100, spent: 0, income: 0, balance: 100 },
+  { id: 'c6', budgetId: 'b1', name: 'Игры', limit_amount: 15000, spent: 0, income: 0, balance: 15000 },
+  { id: 'c7', budgetId: 'b1', name: 'Прочее', limit_amount: 1, spent: 0, income: 0, balance: 1 },
+  { id: 'c8', budgetId: 'b2', name: 'Отель', limit_amount: 80000, spent: 0, income: 0, balance: 80000 },
   {
     id: 'c9',
     budgetId: 'b2',
     name: 'Авиабилеты',
-    limit: 45000,
+    limit_amount: 45000,
     spent: 0,
     income: 0,
     balance: 45000,
@@ -183,7 +183,7 @@ let categories: Category[] = [
     id: 'c10',
     budgetId: 'b2',
     name: 'Рестораны',
-    limit: 25000,
+    limit_amount: 25000,
     spent: 0,
     income: 0,
     balance: 25000,
@@ -267,7 +267,7 @@ const recalculateCategoryValues = (budgetId: string) => {
       ...category,
       spent,
       income,
-      balance: category.limit - spent + income,
+      balance: category.limit_amount - spent + income,
     };
   });
 };
@@ -365,21 +365,21 @@ export const getCategoriesByBudgetId = async (budgetId: string): Promise<Categor
 export const addCategory = async (
   budgetId: string,
   name: string,
-  limit: number
+  limit_amount: number
 ): Promise<Category> => {
   await fakeNetworkDelay(500, 1000);
-  console.log('Mock API: addCategory called for', budgetId, 'with', { name, limit });
-  if (!budgetId || !name || limit <= 0) {
+  console.log('Mock API: addCategory called for', budgetId, 'with', { name, limit_amount });
+  if (!budgetId || !name || limit_amount <= 0) {
     throw new Error('Invalid category data');
   }
   const newCategory: Category = {
     id: generateId(),
     budgetId,
     name,
-    limit,
+    limit_amount,
     spent: 0,
     income: 0,
-    balance: limit,
+    balance: limit_amount,
   };
   categories.push(newCategory);
   recalculateCategoryValues(budgetId); // Пересчитываем для этого бюджета
@@ -389,20 +389,20 @@ export const addCategory = async (
 export const updateCategory = async (
   categoryId: string,
   name: string,
-  limit: number
+  limit_amount: number
 ): Promise<Category> => {
   await fakeNetworkDelay(400, 800);
-  console.log('Mock API: updateCategory called for', categoryId, 'with', { name, limit });
+  console.log('Mock API: updateCategory called for', categoryId, 'with', { name, limit_amount });
   const categoryIndex = categories.findIndex((c) => c.id === categoryId);
   if (categoryIndex === -1) {
     throw new Error('Category not found');
   }
-  if (!name || limit <= 0) {
+  if (!name || limit_amount <= 0) {
     throw new Error('Invalid category data');
   }
 
   const budgetId = categories[categoryIndex].budgetId;
-  categories[categoryIndex] = { ...categories[categoryIndex], name, limit };
+  categories[categoryIndex] = { ...categories[categoryIndex], name, limit_amount };
   recalculateCategoryValues(budgetId); // Пересчитываем для этого бюджета
   console.warn('Update category in mockData. Recalculated balances for budget.');
   return serializeDate({ ...categories[categoryIndex] });

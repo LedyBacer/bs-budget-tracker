@@ -28,17 +28,30 @@ export const useTransactionsRedux = (
 ) => {
   // const dispatch = useAppDispatch(); // Не нужен
 
+  // Преобразуем опции из нашего формата в формат API, пропуская пустые значения
+  const apiQueryParams = budgetId ? {
+    budget_id: budgetId,
+    skip: options?.page ? (options.page - 1) * (options.limit || 10) : undefined,
+    limit: options?.limit,
+    // Добавляем параметры только если они имеют непустые значения
+    ...(options?.categoryId && options.categoryId !== 'all' ? { category_id: options.categoryId } : {}),
+    ...(options?.userId && options.userId !== 'all' ? { author_user_id: parseInt(options.userId) } : {}),
+    ...(options?.type && options.type !== 'all' ? { type: options.type } : {}),
+    ...(options?.startDate ? { start_date: options.startDate } : {}),
+    ...(options?.endDate ? { end_date: options.endDate } : {})
+  } : { budget_id: '' }; // Всегда передаем объект, но с пустым budget_id, если budgetId не задан
+
   // useGetTransactionsByBudgetIdQuery теперь возвращает объект { transactions: Transaction[], totalCount: number }
   const {
     data, // Это объект TransactionsResponse
     isLoading: isLoadingTransactions,
     error,
     refetch: reloadTransactionsQuery,
-  } = useGetTransactionsByBudgetIdQuery({ budgetId: budgetId || '', options }, { skip: !budgetId });
+  } = useGetTransactionsByBudgetIdQuery(apiQueryParams, { skip: !budgetId });
 
   // Извлекаем транзакции и totalCount из data
   const transactions = data?.transactions || [];
-  const totalTransactionsCount = data?.totalCount || 0;
+  const totalTransactionsCount = data?.total_count || 0;
 
   const [addTransactionMutation] = useAddTransactionMutation();
   const [updateTransactionMutation] = useUpdateTransactionMutation();
@@ -56,26 +69,27 @@ export const useTransactionsRedux = (
 
   const addTransaction = useCallback(
     async (
-      categoryId: string,
+      category_id: string,
       type: TransactionType,
       amount: number,
       author: Pick<WebAppUser, 'id' | 'first_name' | 'last_name' | 'username'>,
       name?: string,
       comment?: string,
-      createdAt?: Date
+      transaction_date?: Date
     ): Promise<Transaction | null> => {
       if (!budgetId) return null;
 
       try {
         const newTransaction = await addTransactionMutation({
-          budgetId,
-          categoryId,
-          type,
-          amount,
-          author,
-          name,
-          comment,
-          createdAt,
+          budget_id: budgetId,
+          data: {
+            type,
+            amount,
+            name,
+            comment,
+            category_id,
+            transaction_date: transaction_date?.toISOString(),
+          }
         }).unwrap();
         // RTK Query инвалидирует теги, данные обновятся (список транзакций, суммы, бюджет, категория)
         // dispatch(incrementDataVersion()); // УДАЛЕНО
@@ -99,18 +113,26 @@ export const useTransactionsRedux = (
         name?: string;
         type: TransactionType;
         amount: number;
-        categoryId: string;
+        category_id: string;
         comment?: string;
-        createdAt?: Date;
+        transaction_date?: Date;
       }>
     ): Promise<Transaction | null> => {
       try {
+        // Преобразуем данные в формат API
+        const apiData = {
+          name: data.name,
+          type: data.type,
+          amount: data.amount,
+          category_id: data.category_id,
+          comment: data.comment,
+          transaction_date: data.transaction_date?.toISOString()
+        };
+
         const updatedTransaction = await updateTransactionMutation({
-          transactionId,
-          data,
+          transaction_id: transactionId,
+          data: apiData
         }).unwrap();
-        // RTK Query инвалидирует теги, данные обновятся
-        // dispatch(incrementDataVersion()); // УДАЛЕНО
         return updatedTransaction;
       } catch (err: any) {
         console.error('Failed to update transaction:', err);
@@ -127,12 +149,10 @@ export const useTransactionsRedux = (
   const deleteTransaction = useCallback(
     async (transactionId: string): Promise<boolean> => {
       try {
-        const success = await deleteTransactionMutation(transactionId).unwrap();
-        // RTK Query инвалидирует теги, данные обновятся
-        // if (success) { // УДАЛЕНО
-        //   dispatch(incrementDataVersion());
-        // }
-        return success;
+        await deleteTransactionMutation(transactionId).unwrap();
+        // После успешного удаления явно вызываем refetch для обновления списка
+        await reloadTransactionsQuery();
+        return true; // Возвращаем true, так как операция прошла успешно
       } catch (err: any) {
         console.error('Failed to delete transaction:', err);
         popup.open.ifAvailable({
@@ -142,7 +162,7 @@ export const useTransactionsRedux = (
         return false;
       }
     },
-    [deleteTransactionMutation]
+    [deleteTransactionMutation, reloadTransactionsQuery]
   );
 
   return {

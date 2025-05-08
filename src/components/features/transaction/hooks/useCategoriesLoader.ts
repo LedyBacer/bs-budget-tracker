@@ -11,7 +11,9 @@ export const useCategoriesLoader = (budgetId: string, open: boolean) => {
     isLoading: isLoadingCategories,
     refetch: loadCategories,
     error: categoriesError
-  } = useGetCategoriesByBudgetIdQuery(budgetId, {
+  } = useGetCategoriesByBudgetIdQuery({
+    budget_id: budgetId
+  }, {
     // Не запрашиваем данные, если форма закрыта
     skip: !open || !budgetId
   });

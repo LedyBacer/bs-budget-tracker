@@ -13,7 +13,7 @@ export function CategoryCard({ category, isExpanded }: CategoryCardProps) {
       <div className="mb-1 flex items-center justify-between">
         <span className="font-medium">{category.name}</span>
         <span className="text-muted-foreground text-xs">
-          Лимит: {formatCurrency(category.limit)}
+          Лимит: {formatCurrency(category.limit_amount)}
         </span>
       </div>
       <Progress value={category.progress} className="mb-1 h-2" />

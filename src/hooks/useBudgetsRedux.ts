@@ -10,6 +10,7 @@ import {
 import { selectBudget, selectCurrentBudgetId } from '@/lib/redux/slices/budgetsSlice';
 import { popup } from '@telegram-apps/sdk-react';
 import { Budget } from '@/types';
+import { BudgetCreate, BudgetUpdate } from '@/types/api';
 
 export const useBudgetsRedux = () => {
   const dispatch = useAppDispatch();
@@ -20,7 +21,7 @@ export const useBudgetsRedux = () => {
     isLoading: isLoadingBudgets,
     error,
     refetch: reloadBudgetsQuery,
-  } = useGetBudgetsQuery();
+  } = useGetBudgetsQuery({ skip: 0, limit: 100 });
 
   const [addBudgetMutation] = useAddBudgetMutation();
   const [updateBudgetMutation] = useUpdateBudgetMutation();
@@ -45,7 +46,12 @@ export const useBudgetsRedux = () => {
   const addBudgetAction = useCallback(
     async (name: string, totalAmount: number): Promise<Budget | null> => {
       try {
-        const newBudget = await addBudgetMutation({ name, totalAmount }).unwrap();
+        const budgetData: BudgetCreate = {
+          name,
+          total_amount: totalAmount
+        };
+        
+        const newBudget = await addBudgetMutation(budgetData).unwrap();
         // RTK Query инвалидирует 'Budget LIST', useGetBudgetsQuery обновится
         // Выбираем новый бюджет
         selectBudgetAction(newBudget.id);
@@ -65,7 +71,15 @@ export const useBudgetsRedux = () => {
   const updateBudgetAction = useCallback(
     async (id: string, name: string, totalAmount: number): Promise<Budget | null> => {
       try {
-        const updatedBudget = await updateBudgetMutation({ id, name, totalAmount }).unwrap();
+        const updateData: BudgetUpdate = {
+          name,
+          total_amount: totalAmount
+        };
+        
+        const updatedBudget = await updateBudgetMutation({ 
+          budget_id: id, 
+          data: updateData
+        }).unwrap();
         // RTK Query инвалидирует тег бюджета и 'Budget LIST', данные обновятся
         return updatedBudget;
       } catch (err: any) {
@@ -83,12 +97,14 @@ export const useBudgetsRedux = () => {
   const deleteBudgetAction = useCallback(
     async (id: string): Promise<boolean> => {
       try {
-        const success = await deleteBudgetMutation(id).unwrap();
-        // RTK Query инвалидирует теги, данные обновятся
-        if (success && currentBudgetId === id) {
+        await deleteBudgetMutation(id).unwrap();
+        
+        // Проверяем после успешного удаления
+        if (currentBudgetId === id) {
           selectBudgetAction(null); // Сбрасываем выбор, если удалили текущий
         }
-        return success;
+        
+        return true;
       } catch (err: any) {
         console.error('Failed to delete budget:', err);
         popup.open.ifAvailable({

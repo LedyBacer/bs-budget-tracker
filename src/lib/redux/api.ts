@@ -1,40 +1,45 @@
 // lib/redux/api.ts
-import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
-import { Budget, Category, Transaction, TransactionType, WebAppUser } from '@/types';
-import * as mockApi from '@/lib/mockData';
-
-// Тип для ответа от getTransactionsByBudgetId
-interface TransactionsResponse {
-  transactions: Transaction[];
-  totalCount: number;
-}
-
-// Тип для аргументов getDailyExpenseSummaries
-interface DailyExpenseSummariesArgs {
-  budgetId: string;
-  dateRange: { startDate: string; endDate: string };
-}
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { RootState } from './store';
+import {
+  Budget,
+  Category,
+  Transaction,
+  TransactionType as LocalTransactionType, // Переименовываем локальный для избежания конфликта с импортированным
+  TransactionAuthorInfo,
+} from '@/types';
+import {
+  BudgetCreate,
+  BudgetUpdate,
+  CategoryCreate,
+  CategoryUpdate,
+  TransactionCreate,
+  TransactionUpdate,
+  TransactionListResponse,
+  DateTransactionSummary, // <--- Новый тип для ответа
+  TransactionType as ApiTransactionType, // Тип из API, если он отличается
+} from '@/types/api';
 
 export const api = createApi({
   reducerPath: 'api',
-  baseQuery: fakeBaseQuery(),
-  tagTypes: ['Budget', 'Category', 'Transaction', 'TransactionList', 'TransactionSums'], // Добавлены TransactionList и TransactionSums
+  baseQuery: fetchBaseQuery({
+    baseUrl: '/',
+    prepareHeaders: (headers, { getState }) => {
+      const initData = (getState() as RootState).auth.rawInitData;
+      if (initData) {
+        headers.set('X-Telegram-Init-Data', initData);
+      }
+      return headers;
+    },
+  }),
+  tagTypes: ['Budget', 'Category', 'Transaction', 'TransactionList', 'TransactionSums'],
   endpoints: (builder) => ({
-    // Бюджеты
-    getBudgets: builder.query<Budget[], void>({
-      queryFn: async () => {
-        try {
-          const response = await mockApi.getBudgets();
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при загрузке бюджетов',
-            },
-          };
-        }
-      },
+    // ... эндпоинты для Budget, Category ... (без изменений от предыдущего шага)
+    getBudgets: builder.query<Budget[], { skip?: number; limit?: number }>({
+      query: (params) => ({
+        url: '/api/v1/budgets/',
+        params,
+      }),
       providesTags: (result) =>
         result
           ? [
@@ -43,357 +48,207 @@ export const api = createApi({
             ]
           : [{ type: 'Budget', id: 'LIST' }],
     }),
-
-    addBudget: builder.mutation<Budget, { name: string; totalAmount: number }>({
-      queryFn: async ({ name, totalAmount }) => {
-        try {
-          const response = await mockApi.addBudget(name, totalAmount);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при добавлении бюджета',
-            },
-          };
-        }
-      },
+    getBudgetById: builder.query<Budget, string>({
+      query: (budget_id) => `/api/v1/budgets/${budget_id}`,
+      providesTags: (result, error, id) => [{ type: 'Budget', id }],
+    }),
+    addBudget: builder.mutation<Budget, BudgetCreate>({
+      query: (newBudget) => ({
+        url: '/api/v1/budgets/',
+        method: 'POST',
+        body: newBudget,
+      }),
       invalidatesTags: [{ type: 'Budget', id: 'LIST' }],
     }),
-
-    updateBudget: builder.mutation<Budget, { id: string; name: string; totalAmount: number }>({
-      queryFn: async ({ id, name, totalAmount }) => {
-        try {
-          const response = await mockApi.updateBudget(id, name, totalAmount);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при обновлении бюджета',
-            },
-          };
-        }
-      },
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'Budget', id },
+    updateBudget: builder.mutation<Budget, { budget_id: string; data: BudgetUpdate }>({
+      query: ({ budget_id, data }) => ({
+        url: `/api/v1/budgets/${budget_id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { budget_id }) => [
+        { type: 'Budget', id: budget_id },
         { type: 'Budget', id: 'LIST' },
       ],
     }),
-
-    deleteBudget: builder.mutation<boolean, string>({
-      queryFn: async (id) => {
-        try {
-          const response = await mockApi.deleteBudget(id);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при удалении бюджета',
-            },
-          };
-        }
-      },
+    deleteBudget: builder.mutation<void, string>({
+      query: (budget_id) => ({
+        url: `/api/v1/budgets/${budget_id}`,
+        method: 'DELETE',
+      }),
       invalidatesTags: (result, error, id) => [
         { type: 'Budget', id: 'LIST' },
         { type: 'Budget', id },
-        { type: 'Category', id: 'LIST' }, // Бюджет удален, категории тоже
-        { type: 'TransactionList' }, // Транзакции тоже
-        { type: 'TransactionSums' }, // И суммы
+        { type: 'Category', id: 'LIST' },
+        { type: 'TransactionList' },
+        { type: 'TransactionSums' },
       ],
     }),
 
     // Категории
-    getCategoriesByBudgetId: builder.query<Category[], string>({
-      queryFn: async (budgetId) => {
-        if (!budgetId) return { data: [] }; // Если нет budgetId, возвращаем пустой массив
-        try {
-          const response = await mockApi.getCategoriesByBudgetId(budgetId);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при загрузке категорий',
-            },
-          };
-        }
-      },
-      providesTags: (result, error, budgetId) =>
+    getCategoriesByBudgetId: builder.query<
+      Category[],
+      { budget_id: string; skip?: number; limit?: number }
+    >({
+      query: ({ budget_id, ...params }) => ({
+        url: `/api/v1/budgets/${budget_id}/categories/`,
+        params,
+      }),
+      providesTags: (result, error, { budget_id }) =>
         result
           ? [
               ...result.map(({ id }) => ({ type: 'Category' as const, id })),
-              { type: 'Category', id: 'LIST', budgetId },
+              { type: 'Category', id: 'LIST', budgetId: budget_id },
             ]
-          : [{ type: 'Category', id: 'LIST', budgetId }],
+          : [{ type: 'Category', id: 'LIST', budgetId: budget_id }],
     }),
-
-    addCategory: builder.mutation<Category, { budgetId: string; name: string; limit: number }>({
-      queryFn: async ({ budgetId, name, limit }) => {
-        try {
-          const response = await mockApi.addCategory(budgetId, name, limit);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при добавлении категории',
-            },
-          };
-        }
-      },
-      invalidatesTags: (result, error, { budgetId }) => [
-        { type: 'Category', id: 'LIST', budgetId },
-        { type: 'Budget', id: budgetId }, // Обновить данные бюджета (например, totalLimits)
+    getCategoryById: builder.query<Category, string>({
+      query: (category_id) => `/api/v1/categories/${category_id}`,
+      providesTags: (result, error, id) => [{ type: 'Category', id }],
+    }),
+    addCategory: builder.mutation<Category, { budget_id: string; data: CategoryCreate }>({
+      query: ({ budget_id, data }) => ({
+        url: `/api/v1/budgets/${budget_id}/categories/`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { budget_id }) => [
+        { type: 'Category', id: 'LIST', budgetId: budget_id },
+        { type: 'Budget', id: budget_id },
       ],
     }),
-
-    updateCategory: builder.mutation<Category, { categoryId: string; name: string; limit: number }>(
-      {
-        queryFn: async ({ categoryId, name, limit }) => {
-          try {
-            const response = await mockApi.updateCategory(categoryId, name, limit);
-            return { data: response };
-          } catch (error) {
-            return {
-              error: {
-                status: 'CUSTOM_ERROR',
-                error: error instanceof Error ? error.message : 'Ошибка при обновлении категории',
-              },
-            };
-          }
-        },
-        invalidatesTags: (result, error, { categoryId }) =>
-          result
-            ? [
-                { type: 'Category', id: categoryId },
-                { type: 'Category', id: 'LIST', budgetId: result.budgetId },
-                { type: 'Budget', id: result.budgetId }, // Обновить данные бюджета
-              ]
-            : [],
-      }
-    ),
-
-    deleteCategory: builder.mutation<boolean, string>({
-      queryFn: async (categoryId) => {
-        try {
-          // Нужно получить budgetId перед удалением, если он не возвращается
-          // Для мока это не так критично, но для реального API это важно
-          // Пока оставим так, но в реальном API mockApi.deleteCategory мог бы возвращать удаленную категорию или ее budgetId
-          const response = await mockApi.deleteCategory(categoryId);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при удалении категории',
-            },
-          };
-        }
-      },
-      // Инвалидация немного усложняется, так как budgetId не доступен напрямую из arg
-      // Можно было бы сделать refetchQueries или инвалидировать более общий тег,
-      // либо mockApi.deleteCategory должен возвращать { success: boolean, budgetId: string }
-      // Для упрощения пока инвалидируем общий список категорий и все бюджеты.
-      // В идеале, нужно инвалидировать категории конкретного бюджета.
-      invalidatesTags: (result, error, categoryId) => [
-        { type: 'Category', id: 'LIST' }, // Общий для всех бюджетов, если не знаем budgetId
-        { type: 'Category', id: categoryId },
-        { type: 'Budget', id: 'LIST' }, // Предполагаем, что это может повлиять на бюджет
+    updateCategory: builder.mutation<Category, { category_id: string; data: CategoryUpdate }>({
+      query: ({ category_id, data }) => ({
+        url: `/api/v1/categories/${category_id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { category_id }) =>
+        result
+          ? [
+              { type: 'Category', id: category_id },
+              { type: 'Category', id: 'LIST', budgetId: result.budget_id },
+              { type: 'Budget', id: result.budget_id },
+            ]
+          : [],
+    }),
+    deleteCategory: builder.mutation<void, string>({
+      query: (category_id) => ({
+        url: `/api/v1/categories/${category_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, category_id) => [
+        { type: 'Category', id: 'LIST' },
+        { type: 'Category', id: category_id },
+        { type: 'Budget', id: 'LIST' },
+        { type: 'TransactionList' },
       ],
     }),
 
     // Транзакции
     getTransactionsByBudgetId: builder.query<
-      TransactionsResponse, // Измененный тип
+      TransactionListResponse,
       {
-        budgetId: string;
-        options?: {
-          page?: number;
-          limit?: number;
-          dateRange?: 'all' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom';
-          startDate?: string;
-          endDate?: string;
-          type?: 'all' | 'expense' | 'income';
-          categoryId?: string;
-          userId?: string;
-        };
+        budget_id: string;
+        skip?: number;
+        limit?: number;
+        category_id?: string | null;
+        author_user_id?: number | null;
+        type?: ApiTransactionType | null; // Используем тип из API
+        start_date?: string | null;
+        end_date?: string | null;
       }
     >({
-      queryFn: async ({ budgetId, options }) => {
-        if (!budgetId) return { data: { transactions: [], totalCount: 0 } };
-        try {
-          console.log(
-            `RTK Query: getTransactionsByBudgetId для бюджета ${budgetId}, опции:`,
-            options
-          );
-          // mockApi теперь возвращает { transactions, totalCount }
-          const response = await mockApi.getTransactionsByBudgetId(budgetId, options);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при загрузке транзакций',
-            },
-          };
-        }
-      },
-      serializeQueryArgs: ({ queryArgs }) => {
-        // Сериализуем все опции для уникальности ключа кэша
-        const { budgetId, options } = queryArgs;
-        return `transactions-${budgetId}-${JSON.stringify(options || {})}`;
-      },
-      // merge больше не нужен здесь в таком виде, если мы управляем накоплением в хуке
-      // RTK Query будет кэшировать каждую страницу (или комбинацию фильтров + страница) отдельно.
-      providesTags: (result, error, { budgetId, options }) => [
-        { type: 'TransactionList', id: `${budgetId}-${JSON.stringify(options || {})}` },
+      query: ({ budget_id, ...params }) => ({
+        url: `/api/v1/budgets/${budget_id}/transactions/`,
+        params,
+      }),
+      providesTags: (result, error, { budget_id, ...params }) => [
+        { type: 'TransactionList', id: `${budget_id}-${JSON.stringify(params)}` },
       ],
     }),
-
-    // Новый эндпоинт для получения сумм расходов по дням
-    getDailyExpenseSummaries: builder.query<Record<string, number>, DailyExpenseSummariesArgs>({
-      queryFn: async ({ budgetId, dateRange }) => {
-        try {
-          const response = await mockApi.getDailyExpenseSummaries(budgetId, dateRange);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при загрузке сумм расходов',
-            },
-          };
-        }
-      },
-      providesTags: (result, error, { budgetId, dateRange }) => [
-        { type: 'TransactionSums', id: `${budgetId}-${dateRange.startDate}-${dateRange.endDate}` },
-      ],
+    getTransactionById: builder.query<Transaction, string>({
+      query: (transaction_id) => `/api/v1/transactions/${transaction_id}`,
+      providesTags: (result, error, id) => [{ type: 'Transaction', id }],
     }),
-
-    addTransaction: builder.mutation<
-      Transaction,
-      {
-        budgetId: string;
-        categoryId: string;
-        type: TransactionType;
-        amount: number;
-        author: Pick<WebAppUser, 'id' | 'first_name' | 'last_name' | 'username'>;
-        name?: string;
-        comment?: string;
-        createdAt?: Date | string;
-      }
-    >({
-      queryFn: async (transactionData) => {
-        try {
-          const { budgetId, categoryId, type, amount, author, name, comment, createdAt } =
-            transactionData;
-          const response = await mockApi.addTransaction(
-            budgetId,
-            categoryId,
-            type,
-            amount,
-            author,
-            name,
-            comment,
-            createdAt instanceof Date ? createdAt : createdAt ? new Date(createdAt) : undefined
-          );
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при добавлении транзакции',
-            },
-          };
-        }
-      },
-      invalidatesTags: (result, error, { budgetId }) =>
+    addTransaction: builder.mutation<Transaction, { budget_id: string; data: TransactionCreate }>({
+      query: ({ budget_id, data }) => ({
+        url: `/api/v1/budgets/${budget_id}/transactions/`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { budget_id }) =>
         [
-          { type: 'TransactionList' }, // Инвалидируем все списки транзакций (можно уточнить по budgetId)
-          { type: 'TransactionSums' }, // Инвалидируем все суммы (можно уточнить по budgetId)
-          { type: 'Budget', id: budgetId },
-          { type: 'Category', id: 'LIST', budgetId: budgetId }, // Обновляем список категорий для бюджета
-          result ? { type: 'Category', id: result.categoryId } : undefined, // Обновляем конкретную категорию
+          { type: 'TransactionList' },
+          { type: 'TransactionSums' }, // Инвалидируем суммы при добавлении транзакции
+          { type: 'Budget', id: budget_id },
+          { type: 'Category', id: 'LIST', budgetId: budget_id },
+          result ? { type: 'Category', id: result.category_id } : undefined,
         ].filter(Boolean) as any,
     }),
-
     updateTransaction: builder.mutation<
       Transaction,
-      {
-        transactionId: string;
-        data: Partial<{
-          name?: string;
-          type: TransactionType;
-          amount: number;
-          categoryId: string;
-          comment?: string;
-          createdAt?: Date | string;
-        }>;
-      }
+      { transaction_id: string; data: TransactionUpdate }
     >({
-      queryFn: async ({ transactionId, data }) => {
-        try {
-          const processedData = {
-            ...data,
-            createdAt:
-              data.createdAt instanceof Date
-                ? data.createdAt
-                : data.createdAt
-                  ? new Date(data.createdAt)
-                  : undefined,
-          };
-          const response = await mockApi.updateTransaction(transactionId, processedData);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при обновлении транзакции',
-            },
-          };
-        }
-      },
-      invalidatesTags: (result, error, { data }) =>
+      query: ({ transaction_id, data }) => ({
+        url: `/api/v1/transactions/${transaction_id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { transaction_id }) =>
         result
           ? [
+              { type: 'Transaction', id: transaction_id },
               { type: 'TransactionList' },
-              { type: 'TransactionSums' },
-              { type: 'Budget', id: result.budgetId },
-              { type: 'Category', id: 'LIST', budgetId: result.budgetId },
-              { type: 'Category', id: result.categoryId },
-              // Если категория изменилась, нужно также инвалидировать старую категорию,
-              // но для этого нужно знать старую categoryId.
-              // Для простоты пока так.
+              { type: 'TransactionSums' }, // Инвалидируем суммы при обновлении транзакции
+              { type: 'Budget', id: result.budget_id },
+              { type: 'Category', id: 'LIST', budgetId: result.budget_id },
+              { type: 'Category', id: result.category_id },
             ]
           : [],
     }),
-
-    deleteTransaction: builder.mutation<boolean, string>({
-      queryFn: async (transactionId) => {
-        try {
-          // Перед удалением нужно получить транзакцию, чтобы знать ее budgetId и categoryId для корректной инвалидации.
-          // В mockApi это не сделано, но в реальном API это было бы важно.
-          // Предположим, что инвалидация более общих тегов достаточна для моков.
-          const response = await mockApi.deleteTransaction(transactionId);
-          return { data: response };
-        } catch (error) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: error instanceof Error ? error.message : 'Ошибка при удалении транзакции',
-            },
-          };
-        }
-      },
-      // Для инвалидации после удаления, в идеале, нам нужны budgetId и categoryId удаленной транзакции.
-      // Так как mockApi.deleteTransaction их не возвращает, используем более общую инвалидацию.
-      invalidatesTags: (result, error, transactionId) => [
+    deleteTransaction: builder.mutation<void, string>({
+      query: (transaction_id) => ({
+        url: `/api/v1/transactions/${transaction_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, transaction_id) => [
+        { type: 'Transaction', id: transaction_id },
         { type: 'TransactionList' },
-        { type: 'TransactionSums' },
-        { type: 'Budget', id: 'LIST' }, // Обновляем все бюджеты, т.к. баланс мог измениться
-        { type: 'Category', id: 'LIST' }, // Обновляем все категории
+        { type: 'TransactionSums' }, // Инвалидируем суммы при удалении транзакции
+        { type: 'Budget', id: 'LIST' },
+        { type: 'Category', id: 'LIST' },
+      ],
+    }),
+
+    // Эндпоинт для получения сумм транзакций по дате
+    getTransactionsDateSummary: builder.query<
+      DateTransactionSummary,
+      {
+        budget_id: string;
+        start_date: string; // Обязательный параметр, YYYY-MM-DD
+        end_date?: string | null; // Опциональный, YYYY-MM-DD
+        transaction_type?: 'expense' | 'income' | 'all'; // опционально, default 'all'
+      }
+    >({
+      query: ({ budget_id, start_date, end_date, transaction_type }) => {
+        const params: Record<string, any> = { start_date };
+        if (end_date) {
+          params.end_date = end_date;
+        }
+        if (transaction_type) {
+          params.transaction_type = transaction_type;
+        }
+        return {
+          url: `/api/v1/budgets/${budget_id}/transactions/date-summary/`,
+          params,
+        };
+      },
+      providesTags: (result, error, { budget_id, start_date, end_date, transaction_type }) => [
+        {
+          type: 'TransactionSums',
+          id: `${budget_id}-${start_date}-${end_date || start_date}-${transaction_type || 'all'}`,
+        },
       ],
     }),
   }),
@@ -401,16 +256,19 @@ export const api = createApi({
 
 export const {
   useGetBudgetsQuery,
+  useGetBudgetByIdQuery,
   useAddBudgetMutation,
   useUpdateBudgetMutation,
   useDeleteBudgetMutation,
   useGetCategoriesByBudgetIdQuery,
+  useGetCategoryByIdQuery,
   useAddCategoryMutation,
   useUpdateCategoryMutation,
   useDeleteCategoryMutation,
   useGetTransactionsByBudgetIdQuery,
-  useGetDailyExpenseSummariesQuery, // Экспортируем новый хук
+  useGetTransactionByIdQuery,
   useAddTransactionMutation,
   useUpdateTransactionMutation,
   useDeleteTransactionMutation,
+  useGetTransactionsDateSummaryQuery, // <--- Эта строка должна быть здесь
 } = api;

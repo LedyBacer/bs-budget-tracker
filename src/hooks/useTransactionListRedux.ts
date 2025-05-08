@@ -202,26 +202,43 @@ export const useTransactionListRedux = (
 
   const handleDeleteTransactionOptimistic = useCallback(
     async (transactionId: string) => {
-      // ... (без изменений)
       if (!budgetId) return false;
       try {
-        const success = await deleteTransactionMutation(transactionId).unwrap();
+        // Удаляем транзакцию из API
+        const success = await deleteTransactionMutation(transactionId);
+        
         if (success) {
+          // Удаляем транзакцию из локального состояния
           setAccumulatedTransactions((prev) => prev.filter((t) => t.id !== transactionId));
+          
+          // // Принудительно перезагружаем транзакции при следующем цикле рендеринга
+          // setTimeout(() => {
+          //   // Мы используем setTimeout, чтобы избежать потенциальных проблем с React обновлениями состояния
+          //   if (currentPage === 1) {
+          //     // Если мы на первой странице, просто обновляем с текущими фильтрами
+          //     reloadData(appliedFilters);
+          //   } else {
+          //     // Если мы не на первой странице, сначала сбрасываем на первую страницу
+          //     setCurrentPage(1);
+          //     setAccumulatedTransactions([]);
+          //     setHasMoreState(true);
+          //   }
+          // }, 0);
         }
+        
         return success;
       } catch (error) {
         console.error('[useTransactionListRedux] Failed to delete transaction:', error);
         return false;
       }
     },
-    [deleteTransactionMutation, budgetId]
+    [deleteTransactionMutation, budgetId, currentPage, reloadData, appliedFilters]
   );
 
   const transactionsWithCategoryName: TransactionWithCategoryName[] = accumulatedTransactions.map(
     (transaction) => {
-      // ... (без изменений)
-      const category = categories.find((c) => c.id === transaction.categoryId);
+      // Исправляем categoryId на category_id
+      const category = categories.find((c) => c.id === transaction.category_id);
       return {
         ...transaction,
         categoryName: category?.name || 'Неизвестная категория',

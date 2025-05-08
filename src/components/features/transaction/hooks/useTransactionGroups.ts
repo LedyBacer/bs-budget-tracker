@@ -9,7 +9,7 @@ export function useTransactionGroups(transactions: TransactionWithCategoryName[]
 
     // Группируем транзакции по дате (игнорируя время)
     transactions.forEach((transaction) => {
-      const date = new Date(transaction.createdAt);
+      const date = new Date(transaction.transaction_date);
       const dateKey = format(startOfDay(date), 'yyyy-MM-dd');
 
       if (!groups[dateKey]) {
@@ -22,7 +22,7 @@ export function useTransactionGroups(transactions: TransactionWithCategoryName[]
     // Сортируем транзакции в каждой группе по времени (новые сверху)
     Object.keys(groups).forEach((dateKey) => {
       groups[dateKey].sort((a, b) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime();
       });
     });
 

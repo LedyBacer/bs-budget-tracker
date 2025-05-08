@@ -19,7 +19,10 @@ export const useCategoriesRedux = (budgetId: string | null) => {
     isLoading: isLoadingCategories,
     error,
     refetch: reloadCategoriesQuery,
-  } = useGetCategoriesByBudgetIdQuery(budgetId || '', { skip: !budgetId });
+  } = useGetCategoriesByBudgetIdQuery(
+    budgetId ? { budget_id: budgetId } : { budget_id: '' }, 
+    { skip: !budgetId }
+  );
 
   const [addCategoryMutation] = useAddCategoryMutation();
   const [updateCategoryMutation] = useUpdateCategoryMutation();
@@ -36,11 +39,17 @@ export const useCategoriesRedux = (budgetId: string | null) => {
   }, [budgetId, reloadCategoriesQuery]);
 
   const addCategory = useCallback(
-    async (name: string, limit: number): Promise<Category | null> => {
+    async (name: string, limit_amount: number): Promise<Category | null> => {
       if (!budgetId) return null;
 
       try {
-        const newCategory = await addCategoryMutation({ budgetId, name, limit }).unwrap();
+        const newCategory = await addCategoryMutation({ 
+          budget_id: budgetId, 
+          data: { 
+            name, 
+            limit_amount 
+          } 
+        }).unwrap();
         // RTK Query инвалидирует теги 'Category LIST' и 'Budget', данные обновятся
         // dispatch(incrementDataVersion()); // УДАЛЕНО
         return newCategory;
@@ -57,9 +66,15 @@ export const useCategoriesRedux = (budgetId: string | null) => {
   );
 
   const updateCategory = useCallback(
-    async (categoryId: string, name: string, limit: number): Promise<Category | null> => {
+    async (categoryId: string, name: string, limit_amount: number): Promise<Category | null> => {
       try {
-        const updatedCategory = await updateCategoryMutation({ categoryId, name, limit }).unwrap();
+        const updatedCategory = await updateCategoryMutation({ 
+          category_id: categoryId, 
+          data: { 
+            name, 
+            limit_amount 
+          } 
+        }).unwrap();
         // RTK Query инвалидирует теги 'Category', 'Category LIST' и 'Budget', данные обновятся
         // dispatch(incrementDataVersion()); // УДАЛЕНО
         return updatedCategory;
@@ -78,12 +93,12 @@ export const useCategoriesRedux = (budgetId: string | null) => {
   const deleteCategory = useCallback(
     async (categoryId: string): Promise<boolean> => {
       try {
-        const success = await deleteCategoryMutation(categoryId).unwrap();
+        await deleteCategoryMutation(categoryId).unwrap();
         // RTK Query инвалидирует теги, данные обновятся
         // if (success) { // УДАЛЕНО
         //   dispatch(incrementDataVersion());
         // }
-        return success;
+        return true; // Возвращаем true, так как операция прошла успешно
       } catch (err: any) {
         console.error('Failed to delete category:', err);
         popup.open.ifAvailable({

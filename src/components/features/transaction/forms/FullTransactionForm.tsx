@@ -17,6 +17,7 @@ import {
 import { Category, Transaction, WebAppUser } from '@/types';
 import { useScrollToInput } from '@/hooks/useScrollToInput';
 import { useTransactionsRedux } from '@/hooks/useTransactionsRedux';
+import { formatNumberWithSpaces } from '@/lib/utils';
 
 // Импортируем переиспользуемые компоненты
 import { TypeSelector } from './TypeSelector';
@@ -82,15 +83,20 @@ export function FullTransactionForm({
   // Инициализация формы при открытии или изменении транзакции для редактирования
   useEffect(() => {
     if (open) {
-      const initialAmount = transactionToEdit?.amount || 0;
-      setFormattedAmount(initialAmount ? String(initialAmount) : '');
+      const defaultValues = getFullFormDefaultValues();
       
-      // Сбрасываем форму с правильными значениями из транзакции
-      const defaultValues = getFullFormDefaultValues(transactionToEdit);
+      if (transactionToEdit) {
+        defaultValues.type = transactionToEdit.type || 'expense';
+        defaultValues.amount = transactionToEdit.amount || 0;
+        defaultValues.categoryId = transactionToEdit.category_id;
+        defaultValues.name = transactionToEdit.name || '';
+        defaultValues.comment = transactionToEdit.comment || '';
+        setFormattedAmount(formatNumberWithSpaces(transactionToEdit.amount));
+      }
       
       // Убедимся, что дата корректно передается компоненту DateTimeInput
-      if (transactionToEdit?.createdAt) {
-        defaultValues.createdAt = new Date(transactionToEdit.createdAt);
+      if (transactionToEdit?.transaction_date) {
+        defaultValues.createdAt = new Date(transactionToEdit.transaction_date);
       }
       
       reset(defaultValues);
@@ -114,10 +120,10 @@ export function FullTransactionForm({
         await updateTransaction(transactionToEdit.id, {
           type: data.type,
           amount: data.amount,
-          categoryId: data.categoryId,
+          category_id: data.categoryId,
           name: data.name,
           comment: data.comment,
-          createdAt: data.createdAt,
+          transaction_date: data.createdAt,
         });
       } else {
         // Создание новой транзакции
@@ -151,7 +157,8 @@ export function FullTransactionForm({
   const handleAmountChangeProxy = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const formatted = value.replace(/\s/g, '');
-    setFormattedAmount(value);
+    const formattedValue = formatNumberWithSpaces(value);
+    setFormattedAmount(formattedValue);
     setValue('amount', Number(formatted) || 0);
     trigger('amount'); // Запускаем повторную валидацию суммы
   };

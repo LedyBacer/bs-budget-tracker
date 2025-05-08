@@ -42,22 +42,22 @@ export function BudgetFormFields({
       
       {/* Сумма */}
       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="totalAmount" className="text-right">
+        <Label htmlFor="total_amount" className="text-right">
           Общая сумма, ₽
         </Label>
         <div className="col-span-3">
           <Input
-            id="totalAmount"
+            id="total_amount"
             type="text"
             inputMode="decimal"
             placeholder="Например, 100 000"
             value={formattedAmount}
             onChange={handleAmountChange}
-            className={errors.totalAmount ? 'border-destructive' : ''}
+            className={errors.total_amount ? 'border-destructive' : ''}
             disabled={isSubmitting}
           />
-          {errors.totalAmount && (
-            <p className="text-destructive mt-1 text-xs">{errors.totalAmount.message}</p>
+          {errors.total_amount && (
+            <p className="text-destructive mt-1 text-xs">{errors.total_amount.message}</p>
           )}
         </div>
       </div>

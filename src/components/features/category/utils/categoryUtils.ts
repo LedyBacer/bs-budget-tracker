@@ -13,10 +13,10 @@ export function calculateCategoryBalances(
   transactions: Transaction[]
 ): CategoryWithBalance[] {
   return categories.map((category) => {
-    const categoryTransactions = transactions.filter((t) => t.categoryId === category.id);
+    const categoryTransactions = transactions.filter((t) => t.category_id === category.id);
     // Прогресс считаем только от расходов относительно лимита
     const progress =
-      category.limit > 0 ? Math.min(100, Math.max(0, (category.balance / category.limit) * 100)) : 0;
+      category.limit_amount > 0 ? Math.min(100, Math.max(0, (category.balance / category.limit_amount) * 100)) : 0;
 
     return {
       ...category,
@@ -41,5 +41,5 @@ export function chunkArray<T>(arr: T[], size: number): T[][] {
  * Функция для расчета общей суммы лимитов
  */
 export function calculateTotalLimits(categories: Category[]): number {
-  return categories.reduce((sum, cat) => sum + cat.limit, 0);
+  return categories.reduce((sum, cat) => sum + cat.limit_amount, 0);
 } 

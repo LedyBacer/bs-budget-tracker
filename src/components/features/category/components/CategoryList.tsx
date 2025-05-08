@@ -3,13 +3,13 @@ import { Category } from '@/types';
 import { PlusCircle } from 'lucide-react';
 import { CategoryForm } from './CategoryForm';
 import { CategoryListSkeleton } from '@/components/ui/skeletons';
-import { useCategoryData } from '../hooks/useCategoryData';
 import { usePagination, VISIBLE_CARDS_COUNT } from '../hooks/useVisibleCards';
 import { ExpandableCategoryItem } from './ExpandableCategoryItem';
 import { BudgetLimitsWarning } from './BudgetLimitsWarning';
 import { calculateTotalLimits, chunkArray } from '../utils/categoryUtils';
 import { ActionButton } from '@/components/ui/action-button';
 import { useBudgetsRedux } from '@/hooks/useBudgetsRedux';
+import { useCategoryData } from '../hooks/useCategoryData'; // Убедимся, что useCategoryData правильно получает ID
 
 export function CategoryList() {
   const { currentBudget } = useBudgetsRedux();
@@ -17,25 +17,18 @@ export function CategoryList() {
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Получаем данные категорий
-  const { 
-    categoriesWithBalance, 
-    isLoading, 
-    refetch 
-  } = useCategoryData(currentBudget?.id);
-  
+  const { categoriesWithBalance, isLoading, refetch } = useCategoryData(currentBudget?.id);
+
   // Рассчитываем общую сумму лимитов
   const totalLimits = calculateTotalLimits(categoriesWithBalance);
-  
+
   // Делим категории на чанки для отображения
   const categoryChunks = chunkArray(categoriesWithBalance, VISIBLE_CARDS_COUNT);
-  
+
   // Инициализируем пагинацию
-  const { currentPage, goToPage } = usePagination(
-    scrollContainerRef, 
-    categoryChunks.length
-  );
+  const { currentPage, goToPage } = usePagination(scrollContainerRef, categoryChunks.length);
 
   // Функция для переключения раскрытого элемента
   const handleToggleExpand = (categoryId: string) => {
@@ -73,9 +66,9 @@ export function CategoryList() {
       </div>
 
       {/* Предупреждения о лимитах бюджета */}
-      <BudgetLimitsWarning 
+      <BudgetLimitsWarning
         totalLimits={totalLimits}
-        budgetTotal={currentBudget.totalAmount}
+        budgetTotal={currentBudget.total_amount}
         hasCategories={categoriesWithBalance.length > 0}
       />
 
@@ -88,7 +81,7 @@ export function CategoryList() {
       ) : (
         <div className="relative">
           {categoriesWithBalance.length <= 3 ? (
-            <div className="flex flex-col gap-2 w-full">
+            <div className="flex w-full flex-col gap-2">
               {categoriesWithBalance.map((category) => (
                 <ExpandableCategoryItem
                   key={category.id}
@@ -104,13 +97,13 @@ export function CategoryList() {
             <>
               <div
                 ref={scrollContainerRef}
-                className="flex flex-nowrap space-x-4 overflow-x-auto pb-4 w-full snap-x snap-mandatory"
+                className="flex w-full snap-x snap-mandatory flex-nowrap space-x-4 overflow-x-auto pb-4"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {categoryChunks.map((chunk, chunkIdx) => (
                   <div
                     key={chunkIdx}
-                    className="min-w-[320px] max-w-[340px] flex-shrink-0 snap-start flex flex-col gap-2"
+                    className="flex max-w-[340px] min-w-[320px] flex-shrink-0 snap-start flex-col gap-2"
                   >
                     {chunk.map((category) => (
                       <ExpandableCategoryItem
@@ -126,14 +119,14 @@ export function CategoryList() {
                 ))}
               </div>
               {/* Пагинация (точки) */}
-              <div className="flex justify-center gap-1 mt-2">
+              <div className="mt-2 flex justify-center gap-1">
                 {Array.from({ length: categoryChunks.length }).map((_, index) => (
                   <button
                     key={index}
                     onClick={() => goToPage(index)}
                     className="h-2 w-2 rounded-full transition-colors duration-200"
                     style={{
-                      backgroundColor: index === currentPage ? 'var(--primary)' : 'var(--border)'
+                      backgroundColor: index === currentPage ? 'var(--primary)' : 'var(--border)',
                     }}
                     aria-label={`Перейти к странице ${index + 1}`}
                   />
@@ -156,4 +149,4 @@ export function CategoryList() {
       )}
     </div>
   );
-} 
+}

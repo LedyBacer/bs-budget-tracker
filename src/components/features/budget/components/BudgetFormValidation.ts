@@ -6,7 +6,7 @@ export const budgetSchema = z.object({
     .string()
     .min(1, { message: 'Название бюджета обязательно' })
     .max(50, { message: 'Название слишком длинное (макс. 50)' }),
-  totalAmount: z.preprocess(
+  total_amount: z.preprocess(
     (val) => {
       if (val === '' || val === undefined) return 0;
       return Number(val);

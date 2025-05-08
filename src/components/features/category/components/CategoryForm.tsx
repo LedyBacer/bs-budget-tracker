@@ -48,18 +48,18 @@ export function CategoryForm({
     resolver: zodResolver(categorySchema) as any,
     defaultValues: {
       name: categoryToEdit?.name || '',
-      limit: categoryToEdit?.limit || undefined,
+      limit_amount: categoryToEdit?.limit_amount || undefined,
     },
   });
 
   // Сбрасываем форму при изменении categoryToEdit или при закрытии/открытии
   useEffect(() => {
     if (open) {
-      const initialLimit = categoryToEdit?.limit || undefined;
+      const initialLimit = categoryToEdit?.limit_amount || undefined;
       setFormattedLimit(initialLimit ? formatNumberWithSpaces(initialLimit) : '');
       reset({
         name: categoryToEdit?.name || '',
-        limit: initialLimit,
+        limit_amount: initialLimit,
       });
       setSubmitError(null);
     }
@@ -69,7 +69,7 @@ export function CategoryForm({
     const value = e.target.value;
     const formatted = formatNumberWithSpaces(value);
     setFormattedLimit(formatted);
-    setValue('limit', parseFormattedNumber(value));
+    setValue('limit_amount', parseFormattedNumber(value));
   };
 
   const onSubmit: SubmitHandler<CategoryFormData> = async (data) => {
@@ -78,9 +78,9 @@ export function CategoryForm({
 
     try {
       if (categoryToEdit) {
-        await updateCategory(categoryToEdit.id, data.name, data.limit || 0);
+        await updateCategory(categoryToEdit.id, data.name, data.limit_amount || 0);
       } else {
-        await addCategory(data.name, data.limit || 0);
+        await addCategory(data.name, data.limit_amount || 0);
       }
       onCategorySaved();
       onOpenChange(false);
@@ -112,14 +112,14 @@ export function CategoryForm({
             />
             
             <FormField
-              id="limit"
+              id="limit_amount"
               label="Лимит, ₽"
               type="text"
               inputMode="decimal"
               placeholder="Например, 5 000"
               value={formattedLimit}
               onChange={handleLimitChange}
-              error={errors.limit?.message}
+              error={errors.limit_amount?.message}
               disabled={isSubmitting}
             />
             

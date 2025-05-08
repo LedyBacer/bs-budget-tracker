@@ -4,19 +4,41 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css'; // Ваш CSS (включая Tailwind)
 import { ReduxProvider } from './lib/redux/provider';
+import { store } from './lib/redux/store'; // Импортируем store для dispatch
+import { setRawInitData } from './lib/redux/slices/authSlice'; // Импортируем action
 
 import {
   init,
   themeParams,
+  useRawInitData,
   miniApp,
   backButton,
   mainButton,
   swipeBehavior,
-  viewport
+  viewport,
 } from '@telegram-apps/sdk-react';
 
 // Компонент для инициализации SDK Telegram
 const TelegramSDKLoader: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+  const rawInitData = useRawInitData(); // <--- Получаем initData
+
+  useEffect(() => {
+    // Сохраняем rawInitData в Redux store
+    // store.dispatch можно использовать вне React компонента, если store уже создан,
+    // но здесь мы внутри компонента, так что можем использовать useAppDispatch, если бы он был доступен
+    // Однако, для инициализации, прямой dispatch в store при монтировании - нормальная практика.
+    // Важно: это должно произойти после инициализации store.
+    console.log('Raw Init Data from hook:', rawInitData);
+    if (rawInitData) {
+      store.dispatch(setRawInitData(rawInitData));
+    } else {
+      // Если initData нет (например, при локальной разработке вне Telegram)
+      // можно установить моковые данные или оставить null
+      store.dispatch(setRawInitData(null)); // или моковая строка для тестов
+      console.warn('Raw Init Data is not available. Running in standalone mode?');
+    }
+  }, [rawInitData]); // Зависимость от rawInitData, чтобы обновить, если он изменится (маловероятно после первого рендера)
+
   useEffect(() => {
     // Настройка размеров при изменении viewport
     if (themeParams.isMounted() && viewport.isMounted()) {
@@ -25,11 +47,13 @@ const TelegramSDKLoader: React.FC<React.PropsWithChildren<{}>> = ({ children }) 
       root.style.width = `${viewport.width}px`;
     }
   }, []);
-  
+
   useEffect(() => {
     console.log('CSS variables bound:', themeParams.isCssVarsBound());
   }, []);
-  
+
+  // console.log(useRawInitData());
+
   return <>{children}</>;
 };
 
@@ -63,23 +87,23 @@ try {
   } else {
     console.warn('ThemeParams mountSync is not available');
   }
-  
+
   // MiniApp нужен для ready(), цветов фона/шапки
   miniApp.mountSync();
   // Привязка CSS переменных miniApp
   if (miniApp.bindCssVars && miniApp.bindCssVars.isAvailable()) {
     miniApp.bindCssVars();
   }
-  
-  // Viewport CSS переменные 
+
+  // Viewport CSS переменные
   if (viewport.bindCssVars && viewport.bindCssVars.isAvailable()) {
     viewport.bindCssVars();
   }
-  
+
   // Кнопки, если используются глобально или с самого начала
   backButton.mount();
   mainButton.mount();
-  
+
   // Отключаем вертикальный свайп
   if (swipeBehavior.mount.isAvailable()) {
     swipeBehavior.mount();

@@ -97,11 +97,11 @@ export function TransactionItem({
             <div className="text-xs text-muted-foreground truncate flex justify-between">
               <span>
                 {transaction.name 
-                  ? `${transaction.categoryName} | ${transaction.author.first_name}`
-                  : `Без названия | ${transaction.author.first_name}`}
+                  ? `${transaction.categoryName} | ${transaction.author?.first_name || 'Неизвестный'}`
+                  : `${transaction.categoryName} | ${transaction.author?.first_name || 'Неизвестный'}`}
               </span>
               <span className="whitespace-nowrap">
-                {formatShortTime(new Date(transaction.createdAt))}
+                {formatShortTime(new Date(transaction.transaction_date))}
               </span>
             </div>
           </div>
@@ -118,14 +118,14 @@ export function TransactionItem({
               <div className="space-y-1">
                 <div className="text-xs text-muted-foreground">Дата:</div>
                 <div className="text-sm">
-                  {formatDateTime(new Date(transaction.createdAt))}
+                  {formatDateTime(new Date(transaction.transaction_date))}
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="text-xs text-muted-foreground">Автор:</div>
                 <div className="text-sm">
-                  {transaction.author.first_name} {transaction.author.last_name}
-                  {transaction.author.username && ` (@${transaction.author.username})`}
+                  {transaction.author?.first_name || 'Неизвестный'} {transaction.author?.last_name || ''}
+                  {transaction.author?.username && ` (@${transaction.author.username})`}
                 </div>
               </div>
               {transaction.comment && (
