@@ -264,7 +264,8 @@ export function TransactionFilters({
           </div>
 
           {/* Пользователь */}
-          {uniqueUsers.length > 1 && (
+          {/* uniqueUsers.length > 1  */}
+          {
             <div className="space-y-2">
               <label className="text-sm font-medium">Пользователь</label>
               <Select
@@ -284,7 +285,7 @@ export function TransactionFilters({
                 </SelectContent>
               </Select>
             </div>
-          )}
+          }
         </div>
       )}
     </div>
