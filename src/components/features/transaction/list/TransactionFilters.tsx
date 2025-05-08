@@ -40,10 +40,53 @@ export function TransactionFilters({
   const [isOpen, setIsOpen] = useState(false);
 
   const handleDateRangeChange = (value: FiltersState['dateRange']) => {
+    const now = new Date();
+    let startDate = '';
+    let endDate = '';
+
+    // Вычисляем даты для предустановленных периодов
+    if (value !== 'all' && value !== 'custom') {
+      switch (value) {
+        case 'thisWeek': {
+          const start = new Date(now);
+          start.setDate(now.getDate() - now.getDay() + 1);
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+        case 'lastWeek': {
+          const start = new Date(now);
+          start.setDate(now.getDate() - now.getDay() - 6);
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+        case 'thisMonth': {
+          const start = new Date(now.getFullYear(), now.getMonth(), 1);
+          const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+        case 'lastMonth': {
+          const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const end = new Date(now.getFullYear(), now.getMonth(), 0);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+          break;
+        }
+      }
+    }
+
     onFiltersChange({
       ...filters,
       dateRange: value,
-      ...(value !== 'custom' && { startDate: '', endDate: '' }),
+      startDate,
+      endDate,
     });
   };
 

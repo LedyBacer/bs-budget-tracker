@@ -47,7 +47,23 @@ export function BudgetList() {
 
   // Показываем пустое состояние
   if (allBudgets.length === 0) {
-    return <EmptyBudgetState />;
+    return (
+      <div>
+        <BudgetListHeader
+          isListExpanded={isListExpanded}
+          currentBudget={currentBudget}
+          isLoadingBudgets={isLoadingBudgets}
+          onAddBudgetClick={handleAddBudgetClick}
+          onTitleClick={handleTitleClick}
+        />
+        <EmptyBudgetState />
+        <BudgetForm
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          onBudgetSaved={handleBudgetSaved}
+        />
+      </div>
+    );
   }
 
   return (
