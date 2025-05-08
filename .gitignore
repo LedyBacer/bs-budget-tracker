@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Docker
+.docker/data
+.docker/logs
+src/*.js

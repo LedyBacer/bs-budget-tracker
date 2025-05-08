@@ -52,3 +52,36 @@ export default tseslint.config({
   },
 });
 ```
+
+## Docker
+
+### Сборка и запуск приложения
+
+Для сборки и запуска приложения в Docker:
+
+```bash
+# Сборка и запуск приложения
+docker-compose up -d app
+
+# Проверка логов
+docker logs bs-budget-tracker
+```
+
+### Разработка с использованием Docker
+
+Для разработки с горячей перезагрузкой:
+
+```bash
+# Запуск в режиме разработки
+docker-compose up dev
+
+# Остановка контейнеров
+docker-compose down
+```
+
+### Очистка
+
+```bash
+# Остановка и удаление контейнеров и образов
+docker-compose down --rmi all
+```
