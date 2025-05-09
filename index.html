@@ -1,10 +1,82 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>BS Budget Tracker</title>
+
+    <script>
+      try {
+        const hash = window.location.hash.slice(1);
+        const params = new URLSearchParams(hash);
+        const themeParamsRaw = params.get('tgWebAppThemeParams');
+  
+        if (themeParamsRaw) {
+          const themeParams = JSON.parse(themeParamsRaw);
+          const root = document.documentElement;
+          console.log('Initial Telegram Theme Params:', themeParams);
+  
+          const applyVar = (cssVar, colorValue) => {
+            if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
+              root.style.setProperty(cssVar, colorValue);
+              // console.log(`Applied ${cssVar}: ${colorValue}`);
+            }
+          };
+  
+          applyVar('--background', themeParams.bg_color);
+          applyVar('--foreground', themeParams.text_color);
+          applyVar('--card', themeParams.secondary_bg_color);
+          applyVar('--popover', themeParams.secondary_bg_color);
+          if (themeParams.section_bg_color) {
+              applyVar('--card', themeParams.section_bg_color);
+              applyVar('--popover', themeParams.section_bg_color);
+          }
+          applyVar('--card-foreground', themeParams.text_color); 
+          applyVar('--popover-foreground', themeParams.text_color);
+
+          applyVar('--primary', themeParams.button_color);
+          applyVar('--primary-foreground', themeParams.button_text_color);
+          applyVar('--secondary', themeParams.secondary_bg_color);
+          applyVar('--secondary-foreground', themeParams.text_color);
+          applyVar('--muted-foreground', themeParams.hint_color);
+          applyVar('--muted', themeParams.section_bg_color || themeParams.secondary_bg_color);
+          applyVar('--accent', themeParams.link_color || themeParams.accent_text_color);
+          if (themeParams.accent_text_color) {
+               applyVar('--accent', themeParams.accent_text_color);
+          } else {
+              applyVar('--accent', themeParams.link_color);
+              applyVar('--accent-foreground', themeParams.button_text_color);
+          }
+  
+          applyVar('--destructive', themeParams.destructive_text_color);
+          applyVar('--destructive-foreground', themeParams.button_text_color || '#ffffff');
+
+          if (themeParams.hint_color) {
+              applyVar('--border', themeParams.hint_color);
+          }
+          applyVar('--input', themeParams.secondary_bg_color || themeParams.section_bg_color);
+          applyVar('--input-foreground', themeParams.text_color);
+          applyVar('--ring', themeParams.button_color);
+          applyVar('--sidebar', themeParams.secondary_bg_color || themeParams.bg_color);
+          applyVar('--sidebar-foreground', themeParams.text_color);
+          applyVar('--sidebar-primary', themeParams.button_color);
+          applyVar('--sidebar-primary-foreground', themeParams.button_text_color);
+          applyVar('--sidebar-accent', themeParams.link_color);
+          applyVar('--sidebar-accent-foreground', themeParams.text_color);
+          applyVar('--sidebar-border', themeParams.hint_color);
+          applyVar('--sidebar-ring', themeParams.button_color);
+  
+          console.log('CSS variables set on root by index.html script.');
+  
+        } else {
+          console.log('No tgWebAppThemeParams found in URL hash.');
+        }
+      } catch (e) {
+        console.error('Failed to apply initial Telegram theme vars to CSS custom properties:', e);
+      }
+    </script>
+
   </head>
   <body>
     <div id="root"></div>
