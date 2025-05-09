@@ -40,6 +40,12 @@ export const api = createApi({
         url: '/api/v1/budgets/',
         params,
       }),
+      onQueryStarted: async (args, { getState, queryFulfilled, dispatch }) => {
+        const initData = (getState() as RootState).auth.rawInitData;
+        if (!initData) {
+          console.warn('Attempting to fetch budgets without auth data, this will likely fail');
+        }
+      },
       providesTags: (result) =>
         result
           ? [

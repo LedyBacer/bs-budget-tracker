@@ -15,6 +15,7 @@ import { BudgetList } from '@/components/features/budget/BudgetList';
 import { BudgetDetails } from '@/components/features/budget/BudgetDetails';
 import { CategoryList } from '@/components/features/category';
 import { TransactionList, SimpleTransactionForm } from '@/components/features/transaction';
+import type { TransactionListRef } from '@/components/features/transaction/list/TransactionList';
 import {
   BudgetListSkeleton,
   BudgetDetailsSkeleton,
@@ -34,6 +35,7 @@ function AppContent() {
     currentBudget,
     allBudgets,
     isLoadingBudgets,
+    isAuthLoading,
     errorLoadingBudgets,
     reloadBudgets,
     selectBudget,
@@ -41,7 +43,7 @@ function AppContent() {
   // const dataVersion = useAppSelector(selectDataVersion); // УДАЛЕНО
   const launchParams = useLaunchParams();
   const [isSimpleFormOpen, setIsSimpleFormOpen] = useState(false);
-  const transactionListRef = useRef<{ loadData: (filters?: any) => Promise<void> } | null>(null); // Тип loadData может измениться
+  const transactionListRef = useRef<TransactionListRef | null>(null);
 
   const currentUser = // Типизация WebAppUser уже есть в types/telegram.ts
     launchParams.tgWebAppData &&
@@ -93,7 +95,7 @@ function AppContent() {
     <div className="bg-background text-foreground flex min-h-screen flex-col">
       {/* <Header /> */}
       <PageWrapper>
-        {isLoadingBudgets && !allBudgets.length ? ( // Показываем скелет только если совсем нет данных
+        {isAuthLoading || isLoadingBudgets && !allBudgets.length ? ( // Показываем скелет только если совсем нет данных
           <BudgetListSkeleton />
         ) : (
           <BudgetList />
@@ -152,8 +154,8 @@ function AppContent() {
               onTransactionSaved={async () => {
                 // После сохранения транзакции через простую форму:
                 // 1. Обновить список транзакций (если TransactionList сам это не делает через подписку)
-                if (transactionListRef.current?.loadData) {
-                  // transactionListRef.current.loadData(); // reloadData теперь принимает фильтры
+                if (transactionListRef.current?.reloadData) {
+                  // transactionListRef.current.reloadData(); // reloadData теперь принимает фильтры
                   // и будет вызван изнутри TransactionList при смене фильтров
                 }
                 // 2. Обновить данные бюджета и категорий (RTK Query должен сделать это через инвалидацию)

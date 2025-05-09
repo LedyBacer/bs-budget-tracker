@@ -8,6 +8,7 @@ import {
   useDeleteBudgetMutation,
 } from '@/lib/redux/api';
 import { selectBudget, selectCurrentBudgetId } from '@/lib/redux/slices/budgetsSlice';
+import { selectRawInitData } from '@/lib/redux/slices/authSlice';
 import { popup } from '@telegram-apps/sdk-react';
 import { Budget } from '@/types';
 import { BudgetCreate, BudgetUpdate } from '@/types/api';
@@ -15,13 +16,23 @@ import { BudgetCreate, BudgetUpdate } from '@/types/api';
 export const useBudgetsRedux = () => {
   const dispatch = useAppDispatch();
   const currentBudgetId = useAppSelector(selectCurrentBudgetId);
+  const authInitData = useAppSelector(selectRawInitData);
+  
+  // Показываем состояние загрузки авторизации, если данные еще не инициализированы
+  const isAuthLoading = authInitData === null;
 
+  // Делаем запрос только если есть данные авторизации
   const {
     data: allBudgets = [],
-    isLoading: isLoadingBudgets,
+    isLoading: isLoadingBudgetsData,
     error,
     refetch: reloadBudgetsQuery,
-  } = useGetBudgetsQuery({ skip: 0, limit: 100 });
+  } = useGetBudgetsQuery({ skip: 0, limit: 100 }, { 
+    skip: !authInitData // Пропускаем запрос если нет данных авторизации
+  });
+  
+  // Общее состояние загрузки - включает как загрузку данных авторизации, так и загрузку бюджетов
+  const isLoadingBudgets = isAuthLoading || isLoadingBudgetsData;
 
   const [addBudgetMutation] = useAddBudgetMutation();
   const [updateBudgetMutation] = useUpdateBudgetMutation();
@@ -121,6 +132,7 @@ export const useBudgetsRedux = () => {
     allBudgets,
     currentBudget,
     isLoadingBudgets,
+    isAuthLoading,
     errorLoadingBudgets,
     selectBudget: selectBudgetAction,
     reloadBudgets,
